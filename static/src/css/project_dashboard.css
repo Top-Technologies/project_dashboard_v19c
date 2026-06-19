@@ -1,0 +1,430 @@
+.o_project_dashboard {
+    padding: 22px 26px 32px;
+    background: linear-gradient(180deg, #eef1f7 0%, #f4f6f9 220px);
+    font-family: inherit;
+    display: block;
+    box-sizing: border-box;
+    overflow-y: auto;
+    height: 100%;
+    max-height: 100vh;
+}
+
+/* Make sure the client action wrapper Odoo gives us actually lets the
+   dashboard scroll instead of clipping it. Odoo's .o_action_manager /
+   .o_content wrappers are flex containers without their own scroll,
+   so without this the dashboard content below the fold is cut off.
+   :has() covers modern browsers; the unscoped fallback rules below
+   are written narrowly (only inside the client action body) so they
+   are safe even on browsers without :has() support. */
+.o_action_manager:has(.o_project_dashboard),
+.o_content:has(.o_project_dashboard) {
+    overflow-y: auto;
+    height: 100%;
+}
+.o_action_manager > .o_project_dashboard,
+.o_content > .o_project_dashboard {
+    overflow-y: auto;
+    height: 100%;
+}
+
+/* ── Header ── */
+.pd_header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 22px;
+    padding-bottom: 4px;
+}
+.pd_header h2 {
+    margin: 0;
+    font-size: 1.55rem;
+    font-weight: 800;
+    color: #1e2a3a;
+    letter-spacing: -0.01em;
+}
+.pd_subtitle {
+    font-size: 0.84rem;
+    color: #6c757d;
+    display: block;
+    margin-top: 3px;
+}
+.pd_header_right .btn {
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.82rem;
+    padding: 7px 16px;
+    box-shadow: 0 2px 6px rgba(13,110,253,0.25);
+    transition: transform 0.15s, box-shadow 0.15s;
+    border: none;
+}
+.pd_header_right .btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(13,110,253,0.32);
+}
+
+/* ── Loading ── */
+.pd_loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 300px;
+    color: #6c757d;
+    gap: 14px;
+}
+.pd_loading i { color: #0d6efd; }
+.pd_loading p { font-size: 0.85rem; margin: 0; }
+
+/* ── Empty / Error state ── */
+.pd_empty_state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 400px;
+    color: #6c757d;
+    gap: 8px;
+    text-align: center;
+}
+.pd_empty_state h4 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #343a40;
+    margin: 0;
+}
+.pd_empty_state p {
+    margin: 0;
+    font-size: 0.95rem;
+}
+.pd_empty_state .btn {
+    border-radius: 8px;
+    font-weight: 600;
+}
+
+/* ── KPI Cards ── */
+.pd_kpi_row {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 14px;
+    margin-bottom: 20px;
+}
+@media (max-width: 1200px) {
+    .pd_kpi_row { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 768px) {
+    .pd_kpi_row { grid-template-columns: repeat(2, 1fr); }
+}
+.pd_kpi_card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 18px 18px 16px;
+    position: relative;
+    box-shadow: 0 1px 3px rgba(16,24,40,0.06), 0 1px 2px rgba(16,24,40,0.04);
+    border-left: 4px solid #dee2e6;
+    overflow: hidden;
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+.pd_kpi_card:hover { box-shadow: 0 6px 16px rgba(16,24,40,0.10); }
+.pd_kpi_clickable { cursor: pointer; }
+.pd_kpi_clickable:hover { box-shadow: 0 8px 20px rgba(16,24,40,0.14); transform: translateY(-2px); }
+.pd_kpi_clickable:active { transform: translateY(0); }
+.pd_kpi_card:nth-child(1) { border-left-color: #0d6efd; }
+.pd_kpi_card:nth-child(2) { border-left-color: #ffc107; }
+.pd_kpi_card:nth-child(3) { border-left-color: #28a745; }
+.pd_kpi_card:nth-child(4) { border-left-color: #dc3545; }
+.pd_kpi_card:nth-child(5) { border-left-color: #0dcaf0; }
+.pd_kpi_card:nth-child(6) { border-left-color: #dc3545; }
+.pd_kpi_label {
+    font-size: 0.73rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #6c757d;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+.pd_kpi_value {
+    font-size: 2.1rem;
+    font-weight: 800;
+    color: #1e2a3a;
+    line-height: 1;
+    letter-spacing: -0.02em;
+}
+.pd_kpi_icon {
+    position: absolute;
+    right: 14px;
+    bottom: 12px;
+    font-size: 1.7rem;
+    opacity: 0.12;
+}
+
+/* ── Charts Row ── */
+.pd_charts_row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 20px;
+}
+@media (max-width: 992px) {
+    .pd_charts_row { grid-template-columns: 1fr; }
+}
+.pd_chart_card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 18px;
+    box-shadow: 0 1px 3px rgba(16,24,40,0.06), 0 1px 2px rgba(16,24,40,0.04);
+    transition: box-shadow 0.2s ease;
+}
+.pd_chart_card:hover { box-shadow: 0 6px 16px rgba(16,24,40,0.09); }
+.pd_chart_container {
+    position: relative;
+    width: 100%;
+    height: 240px;
+}
+.pd_canvas {
+    width: 100% !important;
+    height: 100% !important;
+    max-height: 240px;
+    cursor: pointer;
+}
+.pd_chart_hint {
+    font-size: 0.7rem;
+    color: #adb5bd;
+    font-style: italic;
+    margin-top: 8px;
+    text-align: center;
+}
+
+/* ── Card titles ── */
+.pd_card_title {
+    font-size: 0.83rem;
+    font-weight: 700;
+    color: #1e2a3a;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #f0f2f5;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+}
+.pd_card_subtitle {
+    display: block;
+    font-size: 0.72rem;
+    color: #adb5bd;
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: 0;
+    margin: -2px 0 14px;
+}
+
+/* ── Middle row ── */
+.pd_mid_row {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 14px;
+    margin-bottom: 20px;
+}
+@media (max-width: 992px) {
+    .pd_mid_row { grid-template-columns: 1fr; }
+}
+
+/* ── Bottom row ── */
+.pd_bottom_row {
+    display: grid;
+    grid-template-columns: 1fr 1.2fr 1.2fr 0.8fr;
+    gap: 14px;
+    margin-bottom: 20px;
+}
+@media (max-width: 1200px) {
+    .pd_bottom_row { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 768px) {
+    .pd_bottom_row { grid-template-columns: 1fr; }
+}
+
+/* ── Table cards ── */
+.pd_table_card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 18px;
+    box-shadow: 0 1px 3px rgba(16,24,40,0.06), 0 1px 2px rgba(16,24,40,0.04);
+    transition: box-shadow 0.2s ease;
+}
+.pd_table_card:hover { box-shadow: 0 6px 16px rgba(16,24,40,0.09); }
+.pd_table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+}
+.pd_table thead th {
+    padding: 6px 8px;
+    text-align: left;
+    color: #6c757d;
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    border-bottom: 1px solid #f0f2f5;
+}
+.pd_table tbody tr {
+    border-bottom: 1px solid #f8f9fa;
+    transition: background 0.12s ease;
+}
+.pd_table tbody tr:hover { background: #f8f9fa; }
+.pd_table tbody td {
+    padding: 9px 8px;
+    vertical-align: middle;
+}
+.pd_row_clickable { cursor: pointer; }
+.pd_row_clickable:hover { background: #eef4ff; }
+.pd_row_clickable:active { background: #e3edff; }
+.pd_empty {
+    text-align: center;
+    color: #adb5bd;
+    font-style: italic;
+    padding: 20px 0;
+    font-size: 0.82rem;
+}
+.pd_project_name {
+    font-weight: 600;
+    color: #1e2a3a;
+    max-width: 150px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ── Progress bars ── */
+.pd_progress_wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.pd_progress_bar {
+    flex: 1;
+    height: 7px;
+    background: #e9ecef;
+    border-radius: 4px;
+    overflow: hidden;
+}
+.pd_progress_fill {
+    height: 100%;
+    background: linear-gradient(90deg, #4d94ff, #0d6efd);
+    border-radius: 4px;
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.pd_fill_warning { background: linear-gradient(90deg, #ffd43b, #ffc107) !important; }
+.pd_fill_danger  { background: linear-gradient(90deg, #ff6b6b, #dc3545) !important; }
+.pd_progress_pct {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #495057;
+    min-width: 34px;
+    text-align: right;
+}
+.pd_task_count {
+    font-size: 0.78rem;
+    color: #6c757d;
+    text-align: right;
+}
+
+/* ── Activities ── */
+.pd_activity_row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 9px 6px;
+    border-bottom: 1px solid #f8f9fa;
+    border-radius: 8px;
+    margin: 0 -6px;
+}
+.pd_activity_row:last-child { border-bottom: none; }
+.pd_activity_avatar {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #4d94ff, #0d6efd);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+.pd_activity_body {
+    font-size: 0.82rem;
+    line-height: 1.5;
+    min-width: 0;
+}
+.pd_activity_date {
+    display: block;
+    font-size: 0.72rem;
+    color: #adb5bd;
+    margin-top: 2px;
+}
+.pd_stage_badge {
+    display: inline-block;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 1px 7px;
+    border-radius: 20px;
+    margin-left: 6px;
+    vertical-align: middle;
+}
+.pd_stage_new        { background: #e7f1ff; color: #0d6efd; }
+.pd_stage_inprogress { background: #fff8e1; color: #b8860b; }
+.pd_stage_done       { background: #e6f7ec; color: #1e7e34; }
+.pd_stage_cancelled  { background: #fdeaea; color: #c0392b; }
+.pd_stage_unknown    { background: #f1f2f4; color: #6c757d; }
+
+/* ── Alerts ── */
+.pd_alerts_card { }
+.pd_alert {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 9px 11px;
+    border-radius: 8px;
+    margin-bottom: 7px;
+    font-size: 0.82rem;
+    font-weight: 500;
+    transition: transform 0.15s ease;
+}
+.pd_alert:hover { transform: translateX(2px); }
+.pd_alert:last-child { margin-bottom: 0; }
+.pd_alert_danger  { background: #fff5f5; color: #dc3545; border-left: 3px solid #dc3545; }
+.pd_alert_warning { background: #fffbf0; color: #856404; border-left: 3px solid #ffc107; }
+.pd_alert_info    { background: #f0f7ff; color: #0d6efd; border-left: 3px solid #0d6efd; }
+.pd_alert i { margin-top: 1px; flex-shrink: 0; }
+
+/* ── Chart empty state ── */
+.pd_chart_empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 200px;
+    color: #adb5bd;
+    font-size: 0.85rem;
+    font-style: italic;
+    gap: 8px;
+}
+.pd_chart_empty i {
+    font-size: 2rem;
+    opacity: 0.3;
+}
+
+/* ── Entrance animation ── */
+@keyframes pdFadeUp {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.pd_kpi_row, .pd_charts_row, .pd_mid_row, .pd_bottom_row {
+    animation: pdFadeUp 0.35s ease both;
+}
+.pd_charts_row { animation-delay: 0.05s; }
+.pd_mid_row { animation-delay: 0.1s; }
+.pd_bottom_row { animation-delay: 0.15s; }

@@ -1,0 +1,341 @@
+<?xml version="1.0" encoding="utf-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="project_dashboard_v19c.ProjectDashboard">
+        <div class="o_project_dashboard">
+
+            <!-- ── Header ── -->
+            <div class="pd_header">
+                <div class="pd_header_left">
+                    <h2>Project Dashboard</h2>
+                    <span class="pd_subtitle">Real-time overview of all projects and tasks</span>
+                </div>
+                <div class="pd_header_right">
+                    <button class="btn btn-primary btn-sm" t-on-click="loadData">
+                        <i class="fa fa-refresh me-1"/>
+                        Refresh
+                    </button>
+                </div>
+            </div>
+
+            <!-- ── Loading state ── -->
+            <t t-if="state.loading">
+                <div class="pd_loading">
+                    <i class="fa fa-spinner fa-spin fa-2x"/>
+                    <p>Loading dashboard data...</p>
+                </div>
+            </t>
+
+            <!-- ── Error state ── -->
+            <t t-elif="state.error">
+                <div class="pd_empty_state">
+                    <i class="fa fa-exclamation-triangle fa-3x text-danger mb-3"/>
+                    <h4>Could not load dashboard</h4>
+                    <p class="text-muted">
+                        <t t-esc="state.error"/>
+                    </p>
+                    <button class="btn btn-primary mt-2" t-on-click="loadData">
+                        <i class="fa fa-refresh me-1"/>
+                        Try Again
+                    </button>
+                </div>
+            </t>
+
+            <!-- ── Empty state (data loaded but no projects) ── -->
+            <t t-elif="state.data and state.data.kpis.total_projects === 0">
+                <div class="pd_empty_state">
+                    <i class="fa fa-folder-open fa-4x text-muted mb-3"/>
+                    <h4>No projects yet</h4>
+                    <p class="text-muted">Create your first project to see the dashboard come to life.</p>
+                    <a class="btn btn-primary mt-2" href="/odoo/project/new">
+                        <i class="fa fa-plus me-1"/>
+                        New Project
+                    </a>
+                </div>
+            </t>
+
+            <t t-elif="state.data">
+
+                <!-- ── KPI Cards ── -->
+                <div class="pd_kpi_row">
+                    <div class="pd_kpi_card pd_kpi_clickable" t-on-click="onKpiTotalProjectsClick">
+                        <div class="pd_kpi_label">Total Projects</div>
+                        <div class="pd_kpi_value">
+                            <t t-esc="state.data.kpis.total_projects"/>
+                        </div>
+                        <i class="fa fa-folder-open pd_kpi_icon text-primary"/>
+                    </div>
+                    <div class="pd_kpi_card pd_kpi_clickable" t-on-click="onKpiActiveProjectsClick">
+                        <div class="pd_kpi_label">Active Projects</div>
+                        <div class="pd_kpi_value text-warning">
+                            <t t-esc="state.data.kpis.active_projects"/>
+                        </div>
+                        <i class="fa fa-play-circle pd_kpi_icon text-warning"/>
+                    </div>
+                    <div class="pd_kpi_card pd_kpi_clickable" t-on-click="onKpiCompletedProjectsClick">
+                        <div class="pd_kpi_label">Completed Projects</div>
+                        <div class="pd_kpi_value text-success">
+                            <t t-esc="state.data.kpis.completed_projects"/>
+                        </div>
+                        <i class="fa fa-check-circle pd_kpi_icon text-success"/>
+                    </div>
+                    <div class="pd_kpi_card pd_kpi_danger pd_kpi_clickable" t-on-click="onKpiCancelledProjectsClick">
+                        <div class="pd_kpi_label">Cancelled Projects</div>
+                        <div class="pd_kpi_value text-danger">
+                            <t t-esc="state.data.kpis.cancelled_projects"/>
+                        </div>
+                        <i class="fa fa-ban pd_kpi_icon text-danger"/>
+                    </div>
+                    <div class="pd_kpi_card pd_kpi_clickable" t-on-click="onKpiTotalTasksClick">
+                        <div class="pd_kpi_label">Total Tasks</div>
+                        <div class="pd_kpi_value">
+                            <t t-esc="state.data.kpis.total_tasks"/>
+                        </div>
+                        <i class="fa fa-tasks pd_kpi_icon text-info"/>
+                    </div>
+                    <div class="pd_kpi_card pd_kpi_danger pd_kpi_clickable" t-on-click="onKpiOverdueTasksClick">
+                        <div class="pd_kpi_label">Overdue Tasks</div>
+                        <div class="pd_kpi_value text-danger">
+                            <t t-esc="state.data.kpis.overdue_tasks"/>
+                        </div>
+                        <i class="fa fa-clock-o pd_kpi_icon text-danger"/>
+                    </div>
+                </div>
+
+                <!-- ── Charts Row ── -->
+                <div class="pd_charts_row">
+                    <div class="pd_chart_card">
+                        <div class="pd_card_title">Projects by Status</div>
+                        <div class="pd_chart_container">
+                            <canvas t-ref="chartProjectStatus" class="pd_canvas"/>
+                        </div>
+                        <div class="pd_chart_hint">Click a section to view those projects</div>
+                    </div>
+                    <div class="pd_chart_card">
+                        <div class="pd_card_title">Tasks by Stage</div>
+                        <div class="pd_chart_container">
+                            <canvas t-ref="chartTaskStage" class="pd_canvas"/>
+                        </div>
+                        <div class="pd_chart_hint">Click a section to view those tasks</div>
+                    </div>
+                    <div class="pd_chart_card">
+                        <div class="pd_card_title">Project Progress</div>
+                        <div class="pd_chart_container">
+                            <canvas t-ref="chartProgress" class="pd_canvas"/>
+                        </div>
+                        <div class="pd_chart_hint">Click a bar to view those projects</div>
+                    </div>
+                </div>
+
+                <!-- ── Middle Row: Top 5 + Resource Utilization ── -->
+                <div class="pd_mid_row">
+                    <div class="pd_table_card pd_top5">
+                        <div class="pd_card_title">Top 5 Active Projects</div>
+                        <table class="pd_table">
+                            <thead>
+                                <tr>
+                                    <th>Project</th>
+                                    <th>Progress</th>
+                                    <th>Tasks</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-if="state.data.top_projects.length === 0">
+                                    <tr>
+                                        <td colspan="3" class="pd_empty">No active projects</td>
+                                    </tr>
+                                </t>
+                                <t t-foreach="state.data.top_projects" t-as="proj" t-key="proj_index">
+                                    <tr class="pd_row_clickable" t-on-click="() => this.onTopProjectClick(proj.id)">
+                                        <td class="pd_project_name">
+                                            <t t-esc="proj.name"/>
+                                        </td>
+                                        <td>
+                                            <div class="pd_progress_wrap">
+                                                <div class="pd_progress_bar">
+                                                    <div class="pd_progress_fill" t-attf-style="width: {{ proj.progress }}%;"/>
+                                                </div>
+                                                <span class="pd_progress_pct">
+                                                    <t t-esc="proj.progress"/>
+%
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td class="pd_task_count">
+                                            <t t-esc="proj.done_tasks"/>
+/                                            <t t-esc="proj.total_tasks"/>
+                                        </td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="pd_table_card pd_resource">
+                        <div class="pd_card_title">Resource Utilization</div>
+                        <table class="pd_table">
+                            <thead>
+                                <tr>
+                                    <th>Assignee</th>
+                                    <th>Utilization</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-if="state.data.resource_utilization.length === 0">
+                                    <tr>
+                                        <td colspan="2" class="pd_empty">No data</td>
+                                    </tr>
+                                </t>
+                                <t t-foreach="state.data.resource_utilization" t-as="res" t-key="res_index">
+                                    <tr class="pd_row_clickable" t-on-click="() => this.onResourceUtilizationClick(res.user_id, res.name)">
+                                        <td>
+                                            <t t-esc="res.name"/>
+                                        </td>
+                                        <td>
+                                            <div class="pd_progress_wrap">
+                                                <div class="pd_progress_bar">
+                                                    <div t-attf-class="pd_progress_fill {{ res.utilization >= 90 ? 'pd_fill_danger' : res.utilization >= 70 ? 'pd_fill_warning' : '' }}" t-attf-style="width: {{ res.utilization }}%;"/>
+                                                </div>
+                                                <span class="pd_progress_pct">
+                                                    <t t-esc="res.utilization"/>
+%
+                                                </span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- ── Bottom Row ── -->
+                <div class="pd_bottom_row">
+
+                    <div class="pd_table_card">
+                        <div class="pd_card_title">Recently Created Tasks</div>
+                        <span class="pd_card_subtitle">Last 3 days</span>
+                        <t t-if="state.data.recent_activities.length === 0">
+                            <div class="pd_empty">No tasks created in the last 3 days</div>
+                        </t>
+                        <t t-foreach="state.data.recent_activities" t-as="act" t-key="act_index">
+                            <div class="pd_activity_row pd_row_clickable" t-on-click="() => this.onRecentTaskClick(act.id)">
+                                <div class="pd_activity_avatar">
+                                    <t t-esc="act.name[0]"/>
+                                </div>
+                                <div class="pd_activity_body">
+                                    <strong>
+                                        <t t-esc="act.name"/>
+                                    </strong>
+                                    <span t-att-class="'pd_stage_badge ' + (act.stage === 'New' ? 'pd_stage_new' : act.stage === 'In Progress' ? 'pd_stage_inprogress' : act.stage === 'Done' ? 'pd_stage_done' : act.stage === 'Cancelled' ? 'pd_stage_cancelled' : 'pd_stage_unknown')">
+                                        <t t-esc="act.stage"/>
+                                    </span>
+                                    <br/>
+                                    <small class="text-muted">
+                                        <t t-esc="act.project"/>
+ •                                        <t t-esc="act.assignees"/>
+                                    </small>
+                                    <span class="pd_activity_date">
+                                        <t t-esc="act.created"/>
+                                    </span>
+                                </div>
+                            </div>
+                        </t>
+                    </div>
+
+                    <div class="pd_table_card">
+                        <div class="pd_card_title">Upcoming Deadlines</div>
+                        <table class="pd_table">
+                            <thead>
+                                <tr>
+                                    <th>Task</th>
+                                    <th>Deadline</th>
+                                    <th>Days Left</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-if="state.data.upcoming_deadlines.length === 0">
+                                    <tr>
+                                        <td colspan="3" class="pd_empty">No upcoming deadlines</td>
+                                    </tr>
+                                </t>
+                                <t t-foreach="state.data.upcoming_deadlines" t-as="d" t-key="d_index">
+                                    <tr class="pd_row_clickable" t-on-click="() => this.onUpcomingDeadlineClick(d.id)">
+                                        <td>
+                                            <t t-esc="d.name"/>
+                                            <br/>
+                                            <small class="text-muted">
+                                                <t t-esc="d.project"/>
+                                            </small>
+                                        </td>
+                                        <td>
+                                            <t t-esc="d.deadline"/>
+                                        </td>
+                                        <td t-att-class="d.days_left &lt;= 3 ? 'text-danger fw-bold' : d.days_left &lt;= 7 ? 'text-warning fw-bold' : 'text-success'">
+                                            <t t-esc="d.days_left"/>
+ days
+                                        </td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="pd_table_card">
+                        <div class="pd_card_title">Overdue Tasks</div>
+                        <table class="pd_table">
+                            <thead>
+                                <tr>
+                                    <th>Task</th>
+                                    <th>Project</th>
+                                    <th>Overdue By</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-if="state.data.overdue_task_data.length === 0">
+                                    <tr>
+                                        <td colspan="3" class="pd_empty">No overdue tasks 🎉</td>
+                                    </tr>
+                                </t>
+                                <t t-foreach="state.data.overdue_task_data" t-as="ot" t-key="ot_index">
+                                    <tr class="pd_row_clickable" t-on-click="() => this.onOverdueTaskClick(ot.id)">
+                                        <td>
+                                            <t t-esc="ot.name"/>
+                                        </td>
+                                        <td class="text-muted">
+                                            <t t-esc="ot.project"/>
+                                        </td>
+                                        <td class="text-danger fw-bold">
+                                            <t t-esc="ot.days_overdue"/>
+d</td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="pd_table_card pd_alerts_card">
+                        <div class="pd_card_title">Alerts</div>
+                        <t t-if="state.data.alerts.length === 0">
+                            <div class="pd_empty text-success">
+                                <i class="fa fa-check-circle"/>
+ All clear!</div>
+                        </t>
+                        <t t-foreach="state.data.alerts" t-as="alert" t-key="alert_index">
+                            <div t-att-class="'pd_alert pd_alert_' + alert.level">
+                                <i t-att-class="alert.level === 'danger' ? 'fa fa-times-circle' : alert.level === 'warning' ? 'fa fa-exclamation-triangle' : 'fa fa-info-circle'"/>
+                                <span>
+                                    <t t-esc="alert.message"/>
+                                </span>
+                            </div>
+                        </t>
+                    </div>
+
+                </div>
+
+            </t>
+
+        </div>
+    </t>
+
+</templates>

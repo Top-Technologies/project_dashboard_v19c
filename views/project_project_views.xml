@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Form view: statusbar in header -->
+    <record id="view_project_project_form_status" model="ir.ui.view">
+        <field name="name">project.project.form.status</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.edit_project"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <field name="x_project_status" widget="statusbar"
+                       statusbar_visible="new,in_progress,done,cancelled"/>
+            </xpath>
+            <xpath expr="//field[@name='user_id']" position="after">
+                <field name="x_project_status"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Kanban view: status badge on each card -->
+    <record id="view_project_kanban_status" model="ir.ui.view">
+        <field name="name">project.project.kanban.status</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.view_project_kanban"/>
+        <field name="arch" type="xml">
+            <xpath expr="//t[@t-name='card']" position="inside">
+                <div class="mt-2 w-100">
+                    <field name="x_project_status" widget="badge"
+                           decoration-info="x_project_status == 'new'"
+                           decoration-warning="x_project_status == 'in_progress'"
+                           decoration-success="x_project_status == 'done'"
+                           decoration-danger="x_project_status == 'cancelled'"/>
+                </div>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- List view: status badge after project name -->
+    <record id="view_project_list_status" model="ir.ui.view">
+        <field name="name">project.project.list.status</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.view_project"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="x_project_status" widget="badge"
+                       decoration-info="x_project_status == 'new'"
+                       decoration-warning="x_project_status == 'in_progress'"
+                       decoration-success="x_project_status == 'done'"
+                       decoration-danger="x_project_status == 'cancelled'"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Search view: status filters and group by -->
+    <record id="view_project_search_status" model="ir.ui.view">
+        <field name="name">project.project.search.status</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.view_project_project_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//filter[@name='my_projects']" position="before">
+                <filter string="New"         name="status_new"
+                        domain="[('x_project_status','=','new')]"/>
+                <filter string="In Progress" name="status_in_progress"
+                        domain="[('x_project_status','=','in_progress')]"/>
+                <filter string="Done"        name="status_done"
+                        domain="[('x_project_status','=','done')]"/>
+                <filter string="Cancelled"   name="status_cancelled"
+                        domain="[('x_project_status','=','cancelled')]"/>
+                <separator/>
+            </xpath>
+            <xpath expr="//group" position="inside">
+                <filter string="Project Status" name="group_by_status"
+                        context="{'group_by': 'x_project_status'}"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

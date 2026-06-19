@@ -1,0 +1,365 @@
+/** @odoo-module **/
+
+import { registry } from "@web/core/registry";
+import { useService } from "@web/core/utils/hooks";
+import { Component, useState, onMounted, onWillUnmount, useRef } from "@odoo/owl";
+
+const CHART_COLORS = ["#6c757d", "#ffc107", "#28a745", "#dc3545"];
+
+function loadChartJs() {
+    return new Promise((resolve, reject) => {
+        if (window.Chart) {
+            resolve();
+            return;
+        }
+        const existing = document.querySelector('script[src*="chart.js"]');
+        if (existing) {
+            existing.addEventListener("load", resolve);
+            existing.addEventListener("error", reject);
+            return;
+        }
+        const script = document.createElement("script");
+        script.src = "https://cdn.jsdelivr.net/npm/chart.js";
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+    });
+}
+
+export class ProjectDashboard extends Component {
+    static template = "project_dashboard_v19c.ProjectDashboard";
+
+    setup() {
+        this.action = useService("action");
+        this.state = useState({
+            loading: true,
+            data: null,
+            error: null,
+        });
+        this.chartProjectStatusRef = useRef("chartProjectStatus");
+        this.chartTaskStageRef = useRef("chartTaskStage");
+        this.chartProgressRef = useRef("chartProgress");
+        this._charts = {};
+        onMounted(() => this.loadData());
+        onWillUnmount(() => this._destroyCharts());
+    }
+
+    /**
+     * Open a project.project list view filtered by domain.
+     */
+    openProjects(domain, name) {
+        this.action.doAction({
+            type: "ir.actions.act_window",
+            name: name,
+            res_model: "project.project",
+            views: [[false, "list"], [false, "form"]],
+            domain: domain,
+            target: "current",
+        });
+    }
+
+    /**
+     * Open a project.task list view filtered by domain.
+     */
+    openTasks(domain, name) {
+        this.action.doAction({
+            type: "ir.actions.act_window",
+            name: name,
+            res_model: "project.task",
+            views: [[false, "list"], [false, "form"]],
+            domain: domain,
+            target: "current",
+        });
+    }
+
+    /**
+     * Open a single project record directly in form view.
+     */
+    openProjectForm(projectId) {
+        if (!projectId) {
+            return;
+        }
+        this.action.doAction({
+            type: "ir.actions.act_window",
+            res_model: "project.project",
+            views: [[false, "form"]],
+            res_id: projectId,
+            target: "current",
+        });
+    }
+
+    /**
+     * Open a single task record directly in form view.
+     */
+    openTaskForm(taskId) {
+        if (!taskId) {
+            return;
+        }
+        this.action.doAction({
+            type: "ir.actions.act_window",
+            res_model: "project.task",
+            views: [[false, "form"]],
+            res_id: taskId,
+            target: "current",
+        });
+    }
+
+    /**
+     * Open all tasks assigned to a specific user (resource utilization drill-down).
+     */
+    openUserTasks(userId, userName) {
+        if (!userId) {
+            return;
+        }
+        this.openTasks(
+            [["user_ids", "in", [userId]]],
+            (userName || "User") + "'s Tasks"
+        );
+    }
+
+    onKpiTotalProjectsClick() {
+        this.openProjects([], "All Projects");
+    }
+
+    onKpiActiveProjectsClick() {
+        this.openProjects([["x_project_status", "=", "in_progress"]], "Active Projects");
+    }
+
+    onKpiCompletedProjectsClick() {
+        this.openProjects([["x_project_status", "=", "done"]], "Completed Projects");
+    }
+
+    onKpiCancelledProjectsClick() {
+        this.openProjects([["x_project_status", "=", "cancelled"]], "Cancelled Projects");
+    }
+
+    onKpiTotalTasksClick() {
+        this.openTasks([["project_id", "!=", false]], "All Tasks");
+    }
+
+    onKpiOverdueTasksClick() {
+        this.openTasks([["x_is_overdue", "=", true]], "Overdue Tasks");
+    }
+
+    onTopProjectClick(projectId) {
+        this.openProjectForm(projectId);
+    }
+
+    onResourceUtilizationClick(userId, userName) {
+        this.openUserTasks(userId, userName);
+    }
+
+    onOverdueTaskClick(taskId) {
+        this.openTaskForm(taskId);
+    }
+
+    onUpcomingDeadlineClick(taskId) {
+        this.openTaskForm(taskId);
+    }
+
+    onRecentTaskClick(taskId) {
+        this.openTaskForm(taskId);
+    }
+
+    async loadData() {
+        this.state.loading = true;
+        this.state.error = null;
+        this.state.data = null;
+        try {
+            const response = await fetch("/project_dashboard_v19c/data", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-Csrf-Token": odoo.csrf_token,
+                },
+                body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: {} }),
+            });
+            const result = await response.json();
+            if (result.error) {
+                this.state.error = result.error.data
+                    ? result.error.data.message
+                    : result.error.message;
+                this.state.loading = false;
+                return;
+            }
+            this.state.data = result.result;
+            this.state.loading = false;
+            await this._waitForDOM();
+            await this._renderCharts();
+        } catch (e) {
+            console.error("[Dashboard] Load error:", e);
+            this.state.error = e.message || "Unexpected error loading dashboard.";
+            this.state.loading = false;
+        }
+    }
+
+    _waitForDOM() {
+        return new Promise((resolve) => {
+            requestAnimationFrame(() => {
+                requestAnimationFrame(resolve);
+            });
+        });
+    }
+
+    _destroyCharts() {
+        Object.values(this._charts).forEach((c) => c && c.destroy());
+        this._charts = {};
+    }
+
+    async _renderCharts() {
+        if (!this.state.data) {
+            return;
+        }
+        try {
+            await loadChartJs();
+        } catch (e) {
+            console.error("[Dashboard] Chart.js load failed:", e);
+            return;
+        }
+        if (!window.Chart) {
+            console.error("[Dashboard] Chart.js not available after load.");
+            return;
+        }
+        this._destroyCharts();
+        this._renderProjectStatusChart();
+        this._renderTaskStageChart();
+        this._renderProgressChart();
+    }
+
+    _renderProjectStatusChart() {
+        const el = this.chartProjectStatusRef.el;
+        if (!el || !window.Chart) {
+            return;
+        }
+        const data = this.state.data.projects_by_status;
+        this._charts.projectStatus = new window.Chart(el, {
+            type: "doughnut",
+            data: {
+                labels: data.map((d) => d.label),
+                datasets: [{
+                    data: data.map((d) => d.count),
+                    backgroundColor: CHART_COLORS,
+                    borderWidth: 2,
+                    borderColor: "#fff",
+                }],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: "right", labels: { boxWidth: 14, font: { size: 12 } } },
+                    tooltip: { callbacks: { label: (ctx) => " " + ctx.label + ": " + ctx.raw } },
+                },
+                cutout: "60%",
+                onClick: (evt, elements) => {
+                    if (!elements.length) {
+                        return;
+                    }
+                    const point = elements[0];
+                    const slice = data[point.index];
+                    if (!slice) {
+                        return;
+                    }
+                    this.openProjects(
+                        [["x_project_status", "=", slice.key]],
+                        slice.label + " Projects"
+                    );
+                },
+                onHover: (evt, elements) => {
+                    evt.native.target.style.cursor = elements.length ? "pointer" : "default";
+                },
+            },
+        });
+    }
+
+    _renderTaskStageChart() {
+        const el = this.chartTaskStageRef.el;
+        if (!el || !window.Chart) {
+            return;
+        }
+        const data = this.state.data.tasks_by_stage;
+        this._charts.taskStage = new window.Chart(el, {
+            type: "doughnut",
+            data: {
+                labels: data.map((d) => d.label),
+                datasets: [{
+                    data: data.map((d) => d.count),
+                    backgroundColor: CHART_COLORS,
+                    borderWidth: 2,
+                    borderColor: "#fff",
+                }],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: "right", labels: { boxWidth: 14, font: { size: 12 } } } },
+                cutout: "60%",
+                onClick: (evt, elements) => {
+                    if (!elements.length) {
+                        return;
+                    }
+                    const point = elements[0];
+                    const slice = data[point.index];
+                    if (!slice) {
+                        return;
+                    }
+                    this.openTasks(
+                        [["stage_id.name", "=", slice.label]],
+                        slice.label + " Tasks"
+                    );
+                },
+                onHover: (evt, elements) => {
+                    evt.native.target.style.cursor = elements.length ? "pointer" : "default";
+                },
+            },
+        });
+    }
+
+    _renderProgressChart() {
+        const el = this.chartProgressRef.el;
+        if (!el || !window.Chart) {
+            return;
+        }
+        const data = this.state.data.project_progress;
+        this._charts.progress = new window.Chart(el, {
+            type: "bar",
+            data: {
+                labels: data.map((d) => d.label),
+                datasets: [{
+                    label: "Projects",
+                    data: data.map((d) => d.count),
+                    backgroundColor: ["#dc3545", "#fd7e14", "#ffc107", "#20c997", "#28a745"],
+                    borderRadius: 4,
+                }],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 }, grid: { color: "rgba(0,0,0,0.05)" } },
+                    x: { grid: { display: false } },
+                },
+                onClick: (evt, elements) => {
+                    if (!elements.length) {
+                        return;
+                    }
+                    const point = elements[0];
+                    const bucket = data[point.index];
+                    if (!bucket || !bucket.project_ids || !bucket.project_ids.length) {
+                        return;
+                    }
+                    this.openProjects(
+                        [["id", "in", bucket.project_ids]],
+                        "Projects at " + bucket.label + " Progress"
+                    );
+                },
+                onHover: (evt, elements) => {
+                    evt.native.target.style.cursor = elements.length ? "pointer" : "default";
+                },
+            },
+        });
+    }
+}
+
+registry.category("actions").add("project_dashboard_v19c", ProjectDashboard);

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Dashboard as first item in Project app -->
+    <menuitem id="menu_project_dashboard" name="Dashboard" parent="project.menu_main_pm" action="action_project_dashboard" sequence="0"/>
+
+    <!-- Hide the Project Configuration top-level app that appears in the
+         app drawer when task stage records are installed. This config entry
+         is only needed by admins and already lives inside Project > Configuration. -->
+    <record id="project.menu_project_config_project" model="ir.ui.menu">
+        <field name="active" eval="False"/>
+    </record>
+
+</odoo>
