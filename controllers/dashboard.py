@@ -1,13 +1,18 @@
 from datetime import datetime, timedelta
 from odoo import http
 from odoo.http import request
+from odoo.exceptions import AccessError
 
 
 class ProjectDashboardController(http.Controller):
 
     @http.route('/project_dashboard_v19c/data', type='json', auth='user')
     def get_dashboard_data(self):
-        """Return all data needed for the project dashboard."""
+        """Return all data needed for the project dashboard.
+        """
+        if not request.env.user.has_group('base.group_system'):
+            raise AccessError("Only System Administrators can access the project dashboard.")
+
         Project = request.env["project.project"].sudo()
         Task = request.env["project.task"].sudo()
         now = datetime.now()

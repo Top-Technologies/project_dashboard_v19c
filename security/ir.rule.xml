@@ -1,10 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo noupdate="0">
 
-    <!-- Delete the GLOBAL restrictive base rule -->
+    <!-- Delete the GLOBAL restrictive base rule from core project; our
+         own rules below fully replace what it was meant to enforce. -->
     <delete model="ir.rule" id="project.task_type_visibility_rule"/>
 
-    <!-- Allow all internal users to read every task stage -->
+    <!-- Task stages (New/In Progress/Done/Cancelled) are shared pipeline
+         metadata, not per-user data, so every internal user can read them
+         regardless of which projects they can see. -->
     <record id="project_task_type_rule_all" model="ir.rule">
         <field name="name">Task Type: read all stages</field>
         <field name="model_id" ref="project.model_project_task_type"/>
@@ -12,20 +15,53 @@
         <field name="groups" eval="[(4, ref('base.group_user'))]"/>
     </record>
 
-    <!-- Allow all internal users to read all projects -->
-    <record id="project_project_rule_all" model="ir.rule">
-        <field name="name">Project: read all projects</field>
+    <!-- Projects: visible if created by me, managed by me, I'm assigned to
+         one of its tasks, or I follow it.
+         NOTE: x_assigned_user_ids is a searchable computed field defined in
+         models/project_project.py, deliberately added so this rule does not
+         depend on guessing the exact name of core's task one2many field. -->
+    <record id="project_project_rule_visibility" model="ir.rule">
+        <field name="name">Project: see only my own / assigned / followed projects</field>
         <field name="model_id" ref="project.model_project_project"/>
-        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="domain_force">[
+            '|', ('create_uid', '=', user.id),
+            '|', ('user_id', '=', user.id),
+            '|', ('x_assigned_user_ids', 'in', [user.id]),
+                 ('message_partner_ids', 'in', [user.partner_id.id]),
+        ]</field>
         <field name="groups" eval="[(4, ref('base.group_user'))]"/>
     </record>
 
-    <!-- Allow all internal users to read all tasks -->
-    <record id="project_task_rule_all" model="ir.rule">
-        <field name="name">Task: read all tasks</field>
+    <!-- Projects: System Administrators bypass the rule above and see
+         every project, everywhere (Kanban, list, dashboard, etc.). -->
+    <record id="project_project_rule_admin_all" model="ir.rule">
+        <field name="name">Project: administrators see all projects</field>
+        <field name="model_id" ref="project.model_project_project"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('base.group_system'))]"/>
+    </record>
+
+    <!-- Tasks: visible if created by me, assigned to me, I follow the
+         task itself, or I follow its parent project. -->
+    <record id="project_task_rule_visibility" model="ir.rule">
+        <field name="name">Task: see only my own / assigned / followed tasks</field>
+        <field name="model_id" ref="project.model_project_task"/>
+        <field name="domain_force">[
+            '|', ('create_uid', '=', user.id),
+            '|', ('user_ids', 'in', [user.id]),
+            '|', ('message_partner_ids', 'in', [user.partner_id.id]),
+                 ('project_id.message_partner_ids', 'in', [user.partner_id.id]),
+        ]</field>
+        <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+
+    <!-- Tasks: System Administrators bypass the rule above and see every
+         task, everywhere. -->
+    <record id="project_task_rule_admin_all" model="ir.rule">
+        <field name="name">Task: administrators see all tasks</field>
         <field name="model_id" ref="project.model_project_task"/>
         <field name="domain_force">[(1, '=', 1)]</field>
-        <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+        <field name="groups" eval="[(4, ref('base.group_system'))]"/>
     </record>
 
 </odoo>

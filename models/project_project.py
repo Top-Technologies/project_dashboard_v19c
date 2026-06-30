@@ -17,6 +17,35 @@ class ProjectProject(models.Model):
         tracking=True,
     )
 
+    x_assigned_user_ids = fields.Many2many(
+        'res.users',
+        string='Users Assigned to Any Task',
+        compute='_compute_x_assigned_user_ids',
+        search='_search_x_assigned_user_ids',
+        compute_sudo=True,
+        help=(
+            "Technical field used for visibility/access rules only. "
+            "Holds every user assigned to at least one task in this "
+            "project, regardless of the task's current stage."
+        ),
+    )
+
+    def _compute_x_assigned_user_ids(self):
+        # Computed via project.task.project_id rather than a one2many on
+        # this model, so this does not depend on guessing the exact name
+        # of project.project's inverse task relation field.
+        Task = self.env['project.task'].sudo().with_context(active_test=False)
+        for project in self:
+            tasks = Task.search([('project_id', '=', project.id)])
+            project.x_assigned_user_ids = tasks.user_ids
+
+    def _search_x_assigned_user_ids(self, operator, value):
+        # Allows this field to be used inside an ir.rule domain (rules
+        # need a searchable field, not just a computed one).
+        Task = self.env['project.task'].sudo().with_context(active_test=False)
+        matching_tasks = Task.search([('user_ids', operator, value)])
+        return [('id', 'in', matching_tasks.project_id.ids)]
+
     @api.model_create_multi
     def create(self, vals_list):
         # Inject the 4 fixed task stages into each vals dict BEFORE super().create()
