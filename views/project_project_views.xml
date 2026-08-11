@@ -13,6 +13,7 @@
             </xpath>
             <xpath expr="//field[@name='user_id']" position="after">
                 <field name="x_project_status"/>
+                <field name="x_project_type"/>
             </xpath>
         </field>
     </record>
@@ -24,12 +25,15 @@
         <field name="inherit_id" ref="project.view_project_kanban"/>
         <field name="arch" type="xml">
             <xpath expr="//t[@t-name='card']" position="inside">
-                <div class="mt-2 w-100">
+                <div class="mt-2 d-flex flex-wrap align-items-center gap-1 w-100">
                     <field name="x_project_status" widget="badge"
                            decoration-info="x_project_status == 'new'"
                            decoration-warning="x_project_status == 'in_progress'"
                            decoration-success="x_project_status == 'done'"
                            decoration-danger="x_project_status == 'cancelled'"/>
+                    <field name="x_project_type" widget="badge"
+                           decoration-info="x_project_type == 'client'"
+                           decoration-muted="x_project_type == 'internal'"/>
                 </div>
             </xpath>
         </field>
@@ -47,6 +51,9 @@
                        decoration-warning="x_project_status == 'in_progress'"
                        decoration-success="x_project_status == 'done'"
                        decoration-danger="x_project_status == 'cancelled'"/>
+                <field name="x_project_type" widget="badge"
+                       decoration-info="x_project_type == 'client'"
+                       decoration-muted="x_project_type == 'internal'"/>
             </xpath>
         </field>
     </record>
@@ -67,10 +74,17 @@
                 <filter string="Cancelled"   name="status_cancelled"
                         domain="[('x_project_status','=','cancelled')]"/>
                 <separator/>
+                <filter string="Client Project" name="type_client"
+                        domain="[('x_project_type','=','client')]"/>
+                <filter string="Internal Project" name="type_internal"
+                        domain="[('x_project_type','=','internal')]"/>
+                <separator/>
             </xpath>
             <xpath expr="//group" position="inside">
                 <filter string="Project Status" name="group_by_status"
                         context="{'group_by': 'x_project_status'}"/>
+                <filter string="Project Type" name="group_by_type"
+                        context="{'group_by': 'x_project_type'}"/>
             </xpath>
         </field>
     </record>

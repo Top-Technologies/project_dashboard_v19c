@@ -9,4 +9,14 @@
         <field name="interval_type">days</field>
         <field name="nextcall" eval="(DateTime.now() + timedelta(minutes=2)).strftime('%Y-%m-%d %H:%M:%S')"/>
     </record>
+
+    <record id="project_dashboard_populate_type" model="ir.cron">
+        <field name="name">Populate Project Type</field>
+        <field name="model_id" ref="project.model_project_project"/>
+        <field name="state">code</field>
+        <field name="code">model.search([('x_project_type', '=', False)]).write({'x_project_type': 'client'}); env.ref('project_dashboard_v19c.project_dashboard_populate_type', raise_if_not_found=False).write({'active': False})</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="nextcall" eval="(DateTime.now() + timedelta(minutes=3)).strftime('%Y-%m-%d %H:%M:%S')"/>
+    </record>
 </odoo>

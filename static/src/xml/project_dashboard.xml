@@ -8,9 +8,12 @@
             <div class="pd_header">
                 <div class="pd_header_left">
                     <h2>Project Dashboard</h2>
-                    <span class="pd_subtitle">Real-time overview of all projects and tasks</span>
+                    <span class="pd_subtitle">Real-time overview of client projects and tasks</span>
                 </div>
                 <div class="pd_header_right">
+                    <button class="btn btn-secondary btn-sm me-2" t-on-click="onDetailedDashboardClick">
+                        <i class="fa fa-bar-chart me-1"/> Detailed Dashboard
+                    </button>
                     <button class="btn btn-primary btn-sm" t-on-click="loadData">
                         <i class="fa fa-refresh me-1"/>
                         Refresh
@@ -335,6 +338,191 @@ d</td>
 
             </t>
 
+        </div>
+    </t>
+
+    <t t-name="project_dashboard_v19c.ProjectDetailDashboard">
+        <div class="o_project_dashboard ppd_wrapper">
+            <!-- ── Header ── -->
+            <div class="ppd_header">
+                <button class="btn btn-outline-secondary btn-sm" t-on-click="onBackClick">
+                    <i class="fa fa-arrow-left me-1"/>Back to Dashboard
+                </button>
+                <h2 t-if="state.data">PROJECT DASHBOARD: <t t-esc="state.data.project.name"/></h2>
+                <h2 t-else="">PROJECT DASHBOARD</h2>
+                <select class="ppd_project_select" t-on-change="onProjectChange">
+                    <option value="" disabled="disabled" t-att-selected="!state.selectedProjectId">Select Project...</option>
+                    <t t-foreach="state.projectsList" t-as="p" t-key="p.id">
+                        <option t-att-value="p.id" t-att-selected="p.id === state.selectedProjectId">
+                            <t t-esc="p.name"/>
+                        </option>
+                    </t>
+                </select>
+            </div>
+
+            <!-- ── Loading state ── -->
+            <t t-if="state.loading">
+                <div class="pd_loading">
+                    <i class="fa fa-spinner fa-spin fa-2x"/>
+                    <p>Loading project data...</p>
+                </div>
+            </t>
+
+            <!-- ── Error state ── -->
+            <t t-elif="state.error">
+                <div class="pd_empty_state">
+                    <i class="fa fa-exclamation-triangle fa-3x text-danger mb-3"/>
+                    <h4>Could not load project</h4>
+                    <p class="text-muted">
+                        <t t-esc="state.error"/>
+                    </p>
+                    <button class="btn btn-primary mt-2" t-on-click="() => this.loadProjectDetail(this.state.selectedProjectId)">
+                        <i class="fa fa-refresh me-1"/>
+                        Try Again
+                    </button>
+                </div>
+            </t>
+
+            <t t-elif="state.data">
+                
+                <!-- ── Row 1 ── -->
+                <div class="ppd_main_grid">
+                    
+                    <!-- Overall Progress -->
+                    <div class="ppd_progress_card pd_table_card">
+                        <div class="pd_card_title">Overall Project Progress</div>
+                        <div class="ppd_donut_wrap">
+                            <svg class="ppd_donut_svg" viewBox="0 0 120 120">
+                                <circle class="ppd_donut_bg" cx="60" cy="60" r="52"/>
+                                <circle class="ppd_donut_fill" cx="60" cy="60" r="52" 
+                                        t-att-style="'stroke-dasharray: ' + (state.data.project.overall_progress * 326.73 / 100) + ' 326.73'"/>
+                            </svg>
+                            <div class="ppd_donut_center">
+                                <span class="ppd_donut_pct"><t t-esc="state.data.project.overall_progress"/>%</span>
+                            </div>
+                        </div>
+                        <div class="ppd_progress_meta">
+                            <span><t t-esc="state.data.project.overall_progress"/>% Complete</span>
+                            <span><t t-esc="100 - state.data.project.overall_progress"/>% Remaining</span>
+                            <span>Start: <t t-esc="state.data.project.start_date"/></span>
+                        </div>
+                    </div>
+
+                    <!-- Key Milestones -->
+                    <div class="ppd_milestones_card pd_table_card">
+                        <div class="pd_card_title">Key Milestones</div>
+                        <t t-foreach="state.data.milestones" t-as="ms" t-key="ms.id">
+                            <div class="ppd_milestone_row">
+                                <div class="ppd_milestone_dot" t-att-class="ms.is_reached ? 'ppd_dot_reached' : ''"/>
+                                <span class="ppd_milestone_name"><t t-esc="ms.name"/></span>
+                                <div class="ppd_milestone_bar_wrap">
+                                    <div class="pd_progress_bar">
+                                        <div class="pd_progress_fill" t-att-style="'width: ' + ms.progress + '%'"
+                                             t-att-class="ms.progress === 100 ? 'ppd_fill_complete' : ms.progress >= 50 ? 'ppd_fill_good' : ''"/>
+                                    </div>
+                                </div>
+                                <span class="ppd_milestone_pct"><t t-esc="ms.progress"/>%</span>
+                            </div>
+                        </t>
+                        <t t-if="!state.data.milestones || state.data.milestones.length === 0">
+                            <div class="pd_empty">No milestones</div>
+                        </t>
+                    </div>
+
+                    <!-- Right Sidebar -->
+                    <div class="ppd_right_sidebar">
+                        <div class="pd_chart_card ppd_workload_card">
+                            <div class="pd_card_title">Project Workload</div>
+                            <div class="pd_chart_container">
+                                <canvas t-ref="chartWorkload" class="pd_canvas"/>
+                            </div>
+                        </div>
+                        <div class="ppd_golive_card pd_table_card">
+                            <div class="pd_card_title">Go-Live Readiness</div>
+                            <div class="ppd_golive_gauge_wrap">
+                                <svg class="ppd_golive_gauge" viewBox="0 0 100 50">
+                                    <path class="ppd_gauge_bg" d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke-width="15" stroke-linecap="round"/>
+                                    <path class="ppd_gauge_fill" d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke-width="15" stroke-linecap="round"
+                                          t-att-class="state.data.go_live_readiness >= 80 ? 'ppd_gauge_good' : state.data.go_live_readiness >= 50 ? 'ppd_gauge_warn' : 'ppd_gauge_bad'"
+                                          t-att-style="'stroke-dasharray: ' + (state.data.go_live_readiness * 125.66 / 100) + ' 125.66'"/>
+                                </svg>
+                                <div class="ppd_gauge_score">
+                                    <span><t t-esc="state.data.go_live_readiness"/></span><small>/100</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── Row 2 ── -->
+                <div class="ppd_row2_grid">
+                    <div class="pd_chart_card">
+                        <div class="pd_card_title">Tasks by Status</div>
+                        <div class="pd_chart_container">
+                            <canvas t-ref="chartTasksStatus" class="pd_canvas"/>
+                        </div>
+                    </div>
+                    <div class="pd_chart_card">
+                        <div class="pd_card_title">Tasks by Assignee</div>
+                        <div class="pd_chart_container">
+                            <canvas t-ref="chartTasksConsultant" class="pd_canvas"/>
+                        </div>
+                    </div>
+                    <div class="pd_table_card">
+                        <div class="pd_card_title">Upcoming Deadlines</div>
+                        <table class="pd_table">
+                            <thead>
+                                <tr>
+                                    <th>Task</th>
+                                    <th>Deadline</th>
+                                    <th>Left</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-if="!state.data.upcoming_deadlines || state.data.upcoming_deadlines.length === 0">
+                                    <tr>
+                                        <td colspan="3" class="pd_empty">No upcoming deadlines</td>
+                                    </tr>
+                                </t>
+                                <t t-foreach="state.data.upcoming_deadlines" t-as="d" t-key="d.id">
+                                    <tr>
+                                        <td>
+                                            <t t-esc="d.name"/>
+                                            <t t-if="d.critical"><span class="badge bg-danger ms-1">Critical</span></t>
+                                        </td>
+                                        <td><t t-esc="d.deadline"/></td>
+                                        <td t-att-class="d.days_left &lt;= 3 ? 'text-danger fw-bold' : d.days_left &lt;= 7 ? 'text-warning fw-bold' : 'text-success'">
+                                            <t t-esc="d.days_left"/>d
+                                        </td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- ── Row 3 ── -->
+                <div class="ppd_timeline_card pd_table_card mt-3">
+                    <div class="pd_card_title">Project Timeline</div>
+                    <div class="ppd_timeline">
+                        <t t-foreach="state.data.timeline" t-as="phase" t-key="phase_index">
+                            <div class="ppd_timeline_row">
+                                <div class="ppd_timeline_label"><t t-esc="phase.name"/></div>
+                                <div class="ppd_timeline_bar_area">
+                                    <div class="ppd_timeline_bar" t-att-style="'width: ' + (phase.progress || 5) + '%'"
+                                         t-att-class="phase.is_reached ? 'ppd_bar_complete' : 'ppd_bar_active'">
+                                    </div>
+                                    <span class="ppd_timeline_dates"><t t-esc="phase.start"/> — <t t-esc="phase.end"/></span>
+                                </div>
+                            </div>
+                        </t>
+                        <t t-if="!state.data.timeline || state.data.timeline.length === 0">
+                            <div class="pd_empty">No timeline data</div>
+                        </t>
+                    </div>
+                </div>
+
+            </t>
         </div>
     </t>
 

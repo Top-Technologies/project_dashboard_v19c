@@ -118,31 +118,44 @@ export class ProjectDashboard extends Component {
     }
 
     onKpiTotalProjectsClick() {
-        this.openProjects([], "All Projects");
+        this.openProjects([["x_project_type", "=", "client"]], "All Projects");
     }
 
     onKpiActiveProjectsClick() {
-        this.openProjects([["x_project_status", "=", "in_progress"]], "Active Projects");
+        this.openProjects([["x_project_status", "=", "in_progress"], ["x_project_type", "=", "client"]], "Active Projects");
     }
 
     onKpiCompletedProjectsClick() {
-        this.openProjects([["x_project_status", "=", "done"]], "Completed Projects");
+        this.openProjects([["x_project_status", "=", "done"], ["x_project_type", "=", "client"]], "Completed Projects");
     }
 
     onKpiCancelledProjectsClick() {
-        this.openProjects([["x_project_status", "=", "cancelled"]], "Cancelled Projects");
+        this.openProjects([["x_project_status", "=", "cancelled"], ["x_project_type", "=", "client"]], "Cancelled Projects");
     }
 
     onKpiTotalTasksClick() {
-        this.openTasks([["project_id", "!=", false]], "All Tasks");
+        this.openTasks([["project_id", "!=", false], ["project_id.x_project_type", "=", "client"]], "All Tasks");
     }
 
     onKpiOverdueTasksClick() {
-        this.openTasks([["x_is_overdue", "=", true]], "Overdue Tasks");
+        this.openTasks([["x_is_overdue", "=", true], ["project_id.x_project_type", "=", "client"]], "Overdue Tasks");
     }
 
     onTopProjectClick(projectId) {
-        this.openProjectForm(projectId);
+        this.action.doAction({
+            type: "ir.actions.client",
+            tag: "project_detail_dashboard_v19c",
+            name: "Project Dashboard",
+            params: { project_id: projectId },
+        });
+    }
+
+    onDetailedDashboardClick() {
+        this.action.doAction({
+            type: "ir.actions.client",
+            tag: "project_detail_dashboard_v19c",
+            name: "Detailed Dashboard",
+        });
     }
 
     onResourceUtilizationClick(userId, userName) {
@@ -363,3 +376,195 @@ export class ProjectDashboard extends Component {
 }
 
 registry.category("actions").add("project_dashboard_v19c", ProjectDashboard);
+
+export class ProjectDetailDashboard extends Component {
+    static template = "project_dashboard_v19c.ProjectDetailDashboard";
+
+    setup() {
+        this.action = useService("action");
+        this.state = useState({
+            loading: true,
+            data: null,
+            error: null,
+            projectsList: [],
+            selectedProjectId: this.props.action.params?.project_id || this.props.action.context?.project_id || null,
+        });
+        this.chartTasksStatusRef = useRef("chartTasksStatus");
+        this.chartTasksConsultantRef = useRef("chartTasksConsultant");
+        this.chartWorkloadRef = useRef("chartWorkload");
+        this._charts = {};
+
+        onMounted(() => {
+            this.loadProjectsList();
+            if (this.state.selectedProjectId) {
+                this.loadProjectDetail(this.state.selectedProjectId);
+            }
+        });
+        onWillUnmount(() => this._destroyCharts());
+    }
+
+    async loadProjectsList() {
+        try {
+            const response = await fetch("/project_dashboard_v19c/client_projects_list", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-Csrf-Token": odoo.csrf_token,
+                },
+                body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: {} }),
+            });
+            const result = await response.json();
+            if (result.error) {
+                console.error("[Dashboard] Load projects error:", result.error);
+                return;
+            }
+            this.state.projectsList = result.result;
+        } catch (e) {
+            console.error("[Dashboard] Load projects error:", e);
+        }
+    }
+
+    async loadProjectDetail(projectId) {
+        this.state.loading = true;
+        this.state.error = null;
+        this.state.data = null;
+        try {
+            const response = await fetch("/project_dashboard_v19c/project_detail", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-Csrf-Token": odoo.csrf_token,
+                },
+                body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: { project_id: projectId } }),
+            });
+            const result = await response.json();
+            if (result.error) {
+                this.state.error = result.error.data ? result.error.data.message : result.error.message;
+                this.state.loading = false;
+                return;
+            }
+            this.state.data = result.result;
+            this.state.loading = false;
+            await this._waitForDOM();
+            await this._renderCharts();
+        } catch (e) {
+            console.error("[Dashboard] Load detail error:", e);
+            this.state.error = e.message || "Unexpected error loading project detail.";
+            this.state.loading = false;
+        }
+    }
+
+    onProjectChange(ev) {
+        const newProjectId = parseInt(ev.target.value, 10);
+        this.state.selectedProjectId = newProjectId;
+        this.loadProjectDetail(newProjectId);
+    }
+
+    onBackClick() {
+        this.action.doAction({
+            type: "ir.actions.client",
+            tag: "project_dashboard_v19c",
+        }, { clearBreadcrumbs: true });
+    }
+
+    _waitForDOM() {
+        return new Promise((resolve) => {
+            requestAnimationFrame(() => {
+                requestAnimationFrame(resolve);
+            });
+        });
+    }
+
+    _destroyCharts() {
+        Object.values(this._charts).forEach((c) => c && c.destroy());
+        this._charts = {};
+    }
+
+    async _renderCharts() {
+        if (!this.state.data) return;
+        try {
+            await loadChartJs();
+        } catch (e) {
+            console.error("[Dashboard] Chart.js load failed:", e);
+            return;
+        }
+        if (!window.Chart) return;
+
+        this._destroyCharts();
+        this._renderTasksStatusChart();
+        this._renderTasksAssigneeChart();
+        this._renderWorkloadChart();
+    }
+
+    _renderTasksStatusChart() {
+        const el = this.chartTasksStatusRef.el;
+        if (!el || !window.Chart) return;
+        const data = this.state.data.tasks_by_status || [];
+        this._charts.tasksStatus = new window.Chart(el, {
+            type: "bar",
+            data: {
+                labels: data.map((d) => d.label),
+                datasets: [{
+                    label: "Tasks",
+                    data: data.map((d) => d.count),
+                    backgroundColor: CHART_COLORS,
+                    borderRadius: 4,
+                }],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+            },
+        });
+    }
+
+    _renderTasksAssigneeChart() {
+        const el = this.chartTasksConsultantRef.el;
+        if (!el || !window.Chart) return;
+        const data = this.state.data.tasks_by_consultant || [];
+        this._charts.tasksConsultant = new window.Chart(el, {
+            type: "bar",
+            data: {
+                labels: data.map((d) => d.name),
+                datasets: [{
+                    label: "Tasks",
+                    data: data.map((d) => d.count),
+                    backgroundColor: "#0d6efd",
+                    borderRadius: 4,
+                }],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+            },
+        });
+    }
+
+    _renderWorkloadChart() {
+        const el = this.chartWorkloadRef.el;
+        if (!el || !window.Chart) return;
+        const data = this.state.data.workload || [];
+        this._charts.workload = new window.Chart(el, {
+            type: "doughnut",
+            data: {
+                labels: data.map((d) => d.label),
+                datasets: [{
+                    data: data.map((d) => d.count),
+                    backgroundColor: CHART_COLORS,
+                    borderWidth: 2,
+                    borderColor: "#fff",
+                }],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: "right", labels: { boxWidth: 10, font: { size: 10 } } } },
+                cutout: "60%",
+            },
+        });
+    }
+}
+
+registry.category("actions").add("project_detail_dashboard_v19c", ProjectDetailDashboard);

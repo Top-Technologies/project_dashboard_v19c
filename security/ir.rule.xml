@@ -1,10 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo noupdate="0">
 
-    <!-- Delete the GLOBAL restrictive base rule from core project; our
-         own rules below fully replace what it was meant to enforce. -->
-    <delete model="ir.rule" id="project.task_type_visibility_rule"/>
-
     <!-- Task stages (New/In Progress/Done/Cancelled) are shared pipeline
          metadata, not per-user data, so every internal user can read them
          regardless of which projects they can see. -->

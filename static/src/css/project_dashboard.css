@@ -428,3 +428,245 @@
 .pd_charts_row { animation-delay: 0.05s; }
 .pd_mid_row { animation-delay: 0.1s; }
 .pd_bottom_row { animation-delay: 0.15s; }
+
+/* ── Per-Project Dashboard Specific Styles ── */
+.ppd_wrapper {
+    animation: pdFadeUp 0.35s ease both;
+}
+
+.ppd_header {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+.ppd_header h2 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #1e2a3a;
+    flex-grow: 1;
+}
+.ppd_project_select {
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 1px solid #dee2e6;
+    background-color: white;
+    font-size: 0.9rem;
+    color: #1e2a3a;
+    outline: none;
+    cursor: pointer;
+}
+
+.ppd_main_grid {
+    display: grid;
+    grid-template-columns: 1fr 1.5fr 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.ppd_progress_card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+.ppd_donut_wrap {
+    position: relative;
+    width: 120px;
+    height: 120px;
+    margin: 15px 0;
+}
+.ppd_donut_svg {
+    transform: rotate(-90deg);
+    width: 100%;
+    height: 100%;
+}
+.ppd_donut_bg {
+    fill: none;
+    stroke: #e9ecef;
+    stroke-width: 10;
+}
+.ppd_donut_fill {
+    fill: none;
+    stroke: #0d6efd;
+    stroke-width: 10;
+    stroke-linecap: round;
+    transition: stroke-dasharray 1s ease-out;
+}
+.ppd_donut_center {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+}
+.ppd_donut_pct {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1e2a3a;
+}
+.ppd_progress_meta {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 0.85rem;
+    color: #6c757d;
+}
+
+.ppd_milestones_card {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.ppd_milestone_row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.9rem;
+}
+.ppd_milestone_dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background-color: #dee2e6;
+    flex-shrink: 0;
+}
+.ppd_dot_reached { background-color: #28a745; }
+.ppd_milestone_name {
+    width: 100px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: 500;
+}
+.ppd_milestone_bar_wrap {
+    flex-grow: 1;
+}
+.ppd_fill_complete { background-color: #28a745 !important; }
+.ppd_fill_good { background-color: #0d6efd !important; }
+.ppd_milestone_pct {
+    width: 40px;
+    text-align: right;
+    font-weight: 600;
+    color: #1e2a3a;
+}
+
+.ppd_right_sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+.ppd_workload_card {
+    flex-grow: 1;
+    min-height: 200px;
+}
+.ppd_golive_card {
+    text-align: center;
+}
+.ppd_golive_gauge_wrap {
+    position: relative;
+    width: 100px;
+    height: 50px;
+    margin: 10px auto;
+}
+.ppd_golive_gauge {
+    width: 100%;
+    height: 100%;
+}
+.ppd_gauge_bg { stroke: #e9ecef; }
+.ppd_gauge_fill {
+    transition: stroke-dasharray 1s ease-out;
+}
+.ppd_gauge_good { stroke: #28a745; }
+.ppd_gauge_warn { stroke: #fd7e14; }
+.ppd_gauge_bad { stroke: #dc3545; }
+.ppd_gauge_score {
+    position: absolute;
+    bottom: 0;
+    left: 0; right: 0;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #1e2a3a;
+}
+.ppd_gauge_score small {
+    font-size: 0.75rem;
+    color: #6c757d;
+}
+
+.ppd_row2_grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+}
+
+.ppd_timeline_card {
+    padding: 20px;
+}
+.ppd_timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-top: 15px;
+}
+.ppd_timeline_row {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+.ppd_timeline_label {
+    width: 120px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #1e2a3a;
+}
+.ppd_timeline_bar_area {
+    flex-grow: 1;
+    background-color: #f8f9fa;
+    height: 30px;
+    border-radius: 4px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+}
+.ppd_timeline_bar {
+    height: 100%;
+    position: absolute;
+    left: 0; top: 0;
+    border-radius: 4px;
+}
+.ppd_bar_complete { background-color: rgba(40, 167, 69, 0.2); border-left: 4px solid #28a745; }
+.ppd_bar_active { background-color: rgba(13, 110, 253, 0.2); border-left: 4px solid #0d6efd; }
+.ppd_timeline_dates {
+    position: relative;
+    z-index: 1;
+    padding-left: 10px;
+    font-size: 0.8rem;
+    color: #495057;
+}
+
+@media (max-width: 1200px) {
+    .ppd_main_grid, .ppd_row2_grid {
+        grid-template-columns: 1fr 1fr;
+    }
+    .ppd_right_sidebar {
+        grid-column: span 2;
+        flex-direction: row;
+    }
+    .ppd_workload_card, .ppd_golive_card {
+        flex: 1;
+    }
+}
+@media (max-width: 768px) {
+    .ppd_main_grid, .ppd_row2_grid {
+        grid-template-columns: 1fr;
+    }
+    .ppd_right_sidebar {
+        grid-column: 1;
+        flex-direction: column;
+    }
+}

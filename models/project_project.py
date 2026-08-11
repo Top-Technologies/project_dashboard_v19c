@@ -17,6 +17,17 @@ class ProjectProject(models.Model):
         tracking=True,
     )
 
+    x_project_type = fields.Selection(
+        selection=[
+            ('client', 'Client Project'),
+            ('internal', 'Internal Project'),
+        ],
+        string='Project Type',
+        default='client',
+        required=True,
+        tracking=True,
+    )
+
     x_assigned_user_ids = fields.Many2many(
         'res.users',
         string='Users Assigned to Any Task',
@@ -67,7 +78,51 @@ class ProjectProject(models.Model):
             for vals in vals_list:
                 if not vals.get('type_ids'):
                     vals['type_ids'] = stage_cmd
-        return super().create(vals_list)
+                if vals.get('x_project_type', 'client') == 'client':
+                    vals['allow_milestones'] = True
+        
+        projects = super().create(vals_list)
+        
+        milestones_to_create = []
+        for project in projects:
+            if project.x_project_type == 'client':
+                default_milestones = [
+                    {'name': 'Preparation', 'x_phase_sequence': 10},
+                    {'name': 'Blueprint', 'x_phase_sequence': 20},
+                    {'name': 'Realization', 'x_phase_sequence': 30},
+                    {'name': 'Testing', 'x_phase_sequence': 40},
+                    {'name': 'Go-Live', 'x_phase_sequence': 50},
+                ]
+                for ms in default_milestones:
+                    ms['project_id'] = project.id
+                    milestones_to_create.append(ms)
+        
+        if milestones_to_create:
+            self.env['project.milestone'].create(milestones_to_create)
+            
+        return projects
+
+    def write(self, vals):
+        res = super().write(vals)
+        if vals.get('x_project_type') == 'client':
+            # Create milestones if not already present
+            milestones_to_create = []
+            for project in self:
+                if not self.env['project.milestone'].search_count([('project_id', '=', project.id)]):
+                    default_milestones = [
+                        {'name': 'Preparation', 'x_phase_sequence': 10},
+                        {'name': 'Blueprint', 'x_phase_sequence': 20},
+                        {'name': 'Realization', 'x_phase_sequence': 30},
+                        {'name': 'Testing', 'x_phase_sequence': 40},
+                        {'name': 'Go-Live', 'x_phase_sequence': 50},
+                    ]
+                    for ms in default_milestones:
+                        ms['project_id'] = project.id
+                        milestones_to_create.append(ms)
+            if milestones_to_create:
+                self.env['project.milestone'].create(milestones_to_create)
+        return res
+
 
     def action_set_status_new(self):
         self.write({'x_project_status': 'new'})
