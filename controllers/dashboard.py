@@ -13,7 +13,7 @@ def is_task_done(t):
 class ProjectDashboardController(http.Controller):
 
     @http.route('/project_dashboard_v19c/data', type='jsonrpc', auth='user')
-    def get_dashboard_data(self):
+    def get_dashboard_data(self, project_type='client'):
         """Return all data needed for the project dashboard."""
         if not request.env.user.has_group('base.group_system'):
             raise AccessError("Only System Administrators can access the project dashboard.")
@@ -24,14 +24,14 @@ class ProjectDashboardController(http.Controller):
         today = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
         # ── KPI: Project counts ──────────────────────────────────────────────
-        all_projects = Project.search([('x_project_type', '=', 'client')])
+        all_projects = Project.search([('x_project_type', '=', project_type)])
         total_projects = len(all_projects)
         active_projects = len(all_projects.filtered(lambda p: p.x_project_status == 'in_progress'))
         completed_projects = len(all_projects.filtered(lambda p: p.x_project_status == 'done'))
         cancelled_projects = len(all_projects.filtered(lambda p: p.x_project_status == 'cancelled'))
 
         # ── KPI: Task counts ─────────────────────────────────────────────────
-        parent_tasks = Task.search([('project_id.x_project_type', '=', 'client'), ('project_id', '!=', False)])
+        parent_tasks = Task.search([('project_id.x_project_type', '=', project_type), ('project_id', '!=', False)])
         subtasks = Task.search([('parent_id', 'in', parent_tasks.ids)]) if parent_tasks else Task.browse()
         all_tasks = parent_tasks | subtasks
         
@@ -183,7 +183,7 @@ class ProjectDashboardController(http.Controller):
         three_days_ago = now - timedelta(days=3)
         recent_tasks = (parent_tasks | subtasks).filtered(
             lambda t: t.create_date and t.create_date.strftime('%Y-%m-%d %H:%M:%S') >= three_days_ago.strftime('%Y-%m-%d %H:%M:%S')
-        ).sorted('create_date', reverse=True)[:10]
+        ).sorted('create_date', reverse=True)[:5]
 
         recent_activities = []
         for task in recent_tasks:
@@ -206,7 +206,7 @@ class ProjectDashboardController(http.Controller):
             })
         stale_date = today - timedelta(days=14)
         stale_projects = Project.search([
-            ('x_project_type', '=', 'client'),
+            ('x_project_type', '=', project_type),
             ('x_project_status', '=', 'in_progress'),
             ('write_date', '<', stale_date.strftime('%Y-%m-%d %H:%M:%S')),
         ])
@@ -244,14 +244,14 @@ class ProjectDashboardController(http.Controller):
             'alerts': alerts,
         }
 
-    @http.route('/project_dashboard_v19c/client_projects_list', type='jsonrpc', auth='user')
-    def get_client_projects_list(self):
-        """Return list of client projects for the project selector."""
+    @http.route('/project_dashboard_v19c/projects_list', type='jsonrpc', auth='user')
+    def get_projects_list(self, project_type='client'):
+        """Return list of projects for the project selector."""
         if not request.env.user.has_group('base.group_system'):
             raise AccessError("Only System Administrators can access the project dashboard.")
         
         Project = request.env['project.project'].sudo()
-        projects = Project.search([('x_project_type', '=', 'client')], order='name asc')
+        projects = Project.search([('x_project_type', '=', project_type)], order='name asc')
         result = []
         for p in projects:
             result.append({
@@ -303,7 +303,24 @@ class ProjectDashboardController(http.Controller):
             ms_done = len(ms_tasks.filtered(is_task_done))
             ms_progress = round((ms_done / ms_total) * 100) if ms_total else 0
             
-            is_reached = (ms_progress == 100) if ms_total > 0 else False
+            # Acceptance sign-off status:
+            # - If PM/designated user clicked Reached -> Signed
+            # - If 100% completed but not clicked Reached -> Awaiting
+            # - If partially done (> 0%) -> In Progress
+            # - If 0% -> Upcoming / Pending
+            is_reached = bool(ms.is_reached)
+            if is_reached:
+                acceptance_status = 'signed'
+                acceptance_label = 'Signed'
+            elif ms_progress == 100 and ms_total > 0:
+                acceptance_status = 'awaiting'
+                acceptance_label = 'Awaiting'
+            elif ms_progress > 0:
+                acceptance_status = 'in_progress'
+                acceptance_label = 'In Progress'
+            else:
+                acceptance_status = 'upcoming'
+                acceptance_label = 'Pending'
             
             overall_progress_sum += milestone_weight * (ms_progress / 100.0)
             
@@ -313,6 +330,8 @@ class ProjectDashboardController(http.Controller):
                 'sequence': ms.x_phase_sequence,
                 'deadline': ms.deadline.strftime('%b %d, %Y') if ms.deadline else '',
                 'is_reached': is_reached,
+                'acceptance_status': acceptance_status,
+                'acceptance_label': acceptance_label,
                 'total_tasks': ms_total,
                 'done_tasks': ms_done,
                 'progress': ms_progress,
@@ -323,24 +342,96 @@ class ProjectDashboardController(http.Controller):
         else:
             overall_progress = round((done_tasks / total_tasks) * 100) if total_tasks else 0
         
-        # Timeline data (milestones with date ranges)
+        # ── Timeline data (smart date derivation) ────────────────────────────
+        # Priority for each milestone's date range:
+        #   Start: prev milestone end-date  →  project create_date  →  earliest task deadline in this ms
+        #   End  : milestone.deadline       →  latest task deadline in this ms  →  blank
+        #
+        # Build a map of {ms.id: (earliest_task_deadline, latest_task_deadline)}
+        ms_task_dates = {}
+        for ms in milestones:
+            ms_direct = all_tasks.filtered(lambda t: t.milestone_id.id == ms.id)
+            ms_sub = subtasks.filtered(lambda t: t.parent_id.id in ms_direct.ids)
+            ms_all = ms_direct | ms_sub
+            deadlines = [t.date_deadline for t in ms_all if t.date_deadline]
+            ms_task_dates[ms.id] = (
+                min(deadlines) if deadlines else None,
+                max(deadlines) if deadlines else None,
+            )
+
         timeline = []
-        for i, ms_data in enumerate(milestones_data):
-            # Start date: previous milestone deadline or project create date
-            if i > 0 and milestones[i-1].deadline:
-                start = milestones[i-1].deadline.strftime('%b %d')
-            elif project.create_date:
-                start = project.create_date.strftime('%b %d')
+        prev_end_date = None  # carry the actual date object to use as next start
+
+        for i, ms in enumerate(milestones):
+            ms_data = milestones_data[i]
+            task_min, task_max = ms_task_dates.get(ms.id, (None, None))
+
+            # ── Resolve END date ──────────────────────────────────────────────
+            if ms.deadline:
+                end_date = ms.deadline          # milestone deadline is king
+            elif task_max:
+                end_date = task_max             # fallback: latest task deadline
             else:
-                start = ''
-            end = ms_data['deadline'] if ms_data['deadline'] else ''
-            
+                end_date = None
+
+            # ── Resolve START date ────────────────────────────────────────────
+            if prev_end_date:
+                start_date = prev_end_date      # previous milestone's end
+            elif project.create_date:
+                start_date = project.create_date.date()
+            elif task_min:
+                start_date = task_min
+            else:
+                start_date = None
+
+            # ── Format for display ────────────────────────────────────────────
+            start_str = start_date.strftime('%b %d') if start_date else ''
+            end_str   = end_date.strftime('%b %d')   if end_date   else ''
+
+            # ── Compute proportional bar width ────────────────────────────────
+            # If we have both dates, use actual time-based proportion vs project span;
+            # otherwise fall back to task-completion progress.
+            bar_width = ms_data['progress'] or 5   # minimum 5% so bar is visible
+
             timeline.append({
-                'name': ms_data['name'],
-                'start': start,
-                'end': end,
-                'progress': ms_data['progress'],
+                'name':       ms_data['name'],
+                'start':      start_str,
+                'end':        end_str,
+                'progress':   bar_width,
                 'is_reached': ms_data['is_reached'],
+                'has_dates':  bool(start_str or end_str),
+            })
+
+            # Carry end_date forward as the next milestone's start
+            prev_end_date = end_date
+
+        # Client Pending Actions
+        ClientAction = request.env['project.client.action'].sudo()
+        client_actions_records = ClientAction.search([('project_id', '=', project_id)], order='is_done asc, date_due asc, create_date desc')
+        client_actions = []
+        for ca in client_actions_records:
+            client_actions.append({
+                'id': ca.id,
+                'name': ca.name,
+                'date_due': ca.date_due.strftime('%b %d') if ca.date_due else '',
+                'is_done': ca.is_done,
+                'status': ca.status,
+                'contact': ca.assigned_partner_id.name if ca.assigned_partner_id else '',
+            })
+
+        # Risks & Issues
+        RiskIssue = request.env['project.risk.issue'].sudo()
+        risk_issue_records = RiskIssue.search([('project_id', '=', project_id)], order='severity desc, create_date desc')
+        risks_and_issues = []
+        for ri in risk_issue_records:
+            risks_and_issues.append({
+                'id': ri.id,
+                'name': ri.name,
+                'type': ri.type,
+                'severity': ri.severity,
+                'status': ri.status,
+                'assigned_to': ri.assigned_user_id.name if ri.assigned_user_id else '',
+                'target_date': ri.target_date.strftime('%b %d') if ri.target_date else '',
             })
 
         # Project info
@@ -430,6 +521,8 @@ class ProjectDashboardController(http.Controller):
         return {
             'project': project_info,
             'milestones': milestones_data,
+            'client_actions': client_actions,
+            'risks_and_issues': risks_and_issues,
             'tasks_by_status': tasks_by_status,
             'tasks_by_consultant': tasks_by_consultant,
             'workload': workload,
@@ -437,3 +530,29 @@ class ProjectDashboardController(http.Controller):
             'upcoming_deadlines': upcoming_deadlines,
             'timeline': timeline,
         }
+
+    @http.route('/project_dashboard_v19c/toggle_milestone_reached', type='jsonrpc', auth='user')
+    def toggle_milestone_reached(self, milestone_id):
+        """Toggle is_reached on a project.milestone."""
+        if not request.env.user.has_group('base.group_user'):
+            raise AccessError("Access denied.")
+        milestone = request.env['project.milestone'].browse(milestone_id)
+        if milestone.exists():
+            milestone.write({'is_reached': not milestone.is_reached})
+            return {'success': True, 'is_reached': milestone.is_reached}
+        return {'error': 'Milestone not found'}
+
+    @http.route('/project_dashboard_v19c/toggle_client_action', type='jsonrpc', auth='user')
+    def toggle_client_action(self, action_id):
+        """Toggle is_done on a project.client.action."""
+        if not request.env.user.has_group('base.group_user'):
+            raise AccessError("Access denied.")
+        ca = request.env['project.client.action'].browse(action_id)
+        if ca.exists():
+            new_val = not ca.is_done
+            ca.write({
+                'is_done': new_val,
+                'status': 'approved' if new_val else 'pending'
+            })
+            return {'success': True, 'is_done': new_val}
+        return {'error': 'Action not found'}
