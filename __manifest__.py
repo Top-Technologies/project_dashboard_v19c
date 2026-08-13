@@ -27,6 +27,7 @@
         'data/project_task_type_data.xml',
         'data/project_project_data.xml',
         'views/project_project_views.xml',
+        'views/project_task_views.xml',
         'views/project_dashboard_views.xml',
         'views/menus.xml',
     ],
