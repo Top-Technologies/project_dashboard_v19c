@@ -8,6 +8,7 @@ class ProjectProject(models.Model):
         selection=[
             ('new', 'New'),
             ('in_progress', 'In Progress'),
+            ('on_hold', 'On Hold'),
             ('done', 'Done'),
             ('cancelled', 'Cancelled'),
         ],
@@ -192,3 +193,6 @@ class ProjectProject(models.Model):
 
     def action_set_status_cancelled(self):
         self.write({'x_project_status': 'cancelled'})
+
+    def action_set_status_on_hold(self):
+        self.write({'x_project_status': 'on_hold'})
