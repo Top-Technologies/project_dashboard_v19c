@@ -329,6 +329,24 @@
 }
 
 /* ── Activities ── */
+.pd_activity_scroll {
+    max-height: 300px;          /* fits ~5 rows comfortably */
+    overflow-y: auto;
+    overflow-x: hidden;
+    /* subtle inset scrollbar on WebKit */
+    scrollbar-width: thin;
+    scrollbar-color: #dee2e6 transparent;
+}
+.pd_activity_scroll::-webkit-scrollbar {
+    width: 4px;
+}
+.pd_activity_scroll::-webkit-scrollbar-track {
+    background: transparent;
+}
+.pd_activity_scroll::-webkit-scrollbar-thumb {
+    background-color: #dee2e6;
+    border-radius: 4px;
+}
 .pd_activity_row {
     display: flex;
     align-items: flex-start;
@@ -496,138 +514,450 @@
     stroke-linecap: round;
     transition: stroke-dasharray 1s ease-out;
 }
+/* ═════════════════════════════════════════════════════════════════════
+   PROJECT DETAIL DASHBOARD (PPD)
+   ═════════════════════════════════════════════════════════════════════ */
+
+.ppd_wrapper {
+    background-color: #f4f6f9;
+    min-height: 100%;
+    padding: 20px;
+}
+
+.ppd_header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #fff;
+    padding: 14px 20px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(16,24,40,0.06);
+    flex-wrap: wrap;
+    gap: 12px;
+}
+.ppd_header_title_wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.ppd_header h2 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin: 0;
+    color: #1e2a3a;
+    letter-spacing: -0.01em;
+}
+.ppd_header_badge {
+    font-size: 0.75rem;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+.ppd_status_new { background-color: #e0f2fe; color: #0284c7; }
+.ppd_status_in_progress { background-color: #fef3c7; color: #d97706; }
+.ppd_status_done { background-color: #d1fae5; color: #059669; }
+.ppd_status_cancelled { background-color: #fee2e2; color: #dc2626; }
+
+.ppd_header_actions {
+    display: flex;
+    align-items: center;
+}
+.ppd_project_select {
+    padding: 7px 14px;
+    border-radius: 8px;
+    border: 1px solid #d0d5dd;
+    font-size: 0.88rem;
+    color: #344054;
+    background: #fff;
+    min-width: 220px;
+    outline: none;
+    cursor: pointer;
+}
+.ppd_project_select:focus {
+    border-color: #714B67;
+    box-shadow: 0 0 0 2px rgba(113, 75, 103, 0.15);
+}
+
+/* ── Grids ── */
+.ppd_row1_grid {
+    display: grid;
+    grid-template-columns: 1fr 1.25fr 1.25fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.ppd_row2_grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1.15fr 0.85fr;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.ppd_row3_grid {
+    display: grid;
+    grid-template-columns: 1fr 1.25fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+@media (max-width: 1400px) {
+    .ppd_row1_grid { grid-template-columns: 1fr 1fr; }
+    .ppd_row2_grid { grid-template-columns: 1fr 1fr; }
+    .ppd_row3_grid { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 768px) {
+    .ppd_row1_grid, .ppd_row2_grid, .ppd_row3_grid { grid-template-columns: 1fr; }
+}
+
+/* ── Overall Progress Card ── */
+.ppd_progress_card {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+.ppd_donut_wrap {
+    position: relative;
+    width: 110px;
+    height: 110px;
+    margin: 10px auto;
+}
+.ppd_donut_svg {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+}
+.ppd_donut_bg {
+    fill: none;
+    stroke: #edf2f7;
+    stroke-width: 14;
+}
+.ppd_donut_fill {
+    fill: none;
+    stroke: #714B67;
+    stroke-width: 14;
+    stroke-linecap: round;
+    transition: stroke-dasharray 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
 .ppd_donut_center {
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    flex-direction: column;
 }
 .ppd_donut_pct {
-    font-size: 1.5rem;
+    font-size: 1.45rem;
     font-weight: 700;
     color: #1e2a3a;
 }
 .ppd_progress_meta {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    font-size: 0.85rem;
+    font-size: 0.82rem;
     color: #6c757d;
+    padding-top: 6px;
+    border-top: 1px solid #f1f3f5;
+}
+.ppd_start_date {
+    display: block;
+    font-size: 0.76rem;
 }
 
+/* ── Key Milestones Card ── */
 .ppd_milestones_card {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+}
+.ppd_milestone_list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 6px;
 }
 .ppd_milestone_row {
     display: flex;
     align-items: center;
     gap: 10px;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
 }
 .ppd_milestone_dot {
-    width: 12px;
-    height: 12px;
+    width: 10px;
+    height: 10px;
     border-radius: 50%;
     background-color: #dee2e6;
     flex-shrink: 0;
 }
-.ppd_dot_reached { background-color: #28a745; }
+.ppd_dot_reached { background-color: #10b981; box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2); }
+.ppd_dot_active { background-color: #3b82f6; }
 .ppd_milestone_name {
-    width: 100px;
+    width: 95px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    font-weight: 500;
+    font-weight: 600;
+    color: #334155;
 }
 .ppd_milestone_bar_wrap {
     flex-grow: 1;
 }
-.ppd_fill_complete { background-color: #28a745 !important; }
-.ppd_fill_good { background-color: #0d6efd !important; }
+.ppd_fill_complete { background-color: #10b981 !important; }
+.ppd_fill_good { background-color: #3b82f6 !important; }
 .ppd_milestone_pct {
-    width: 40px;
+    width: 36px;
     text-align: right;
-    font-weight: 600;
+    font-weight: 700;
+    font-size: 0.8rem;
     color: #1e2a3a;
 }
 
-.ppd_right_sidebar {
+/* ── Milestone Acceptance / Sign-Off Card ── */
+.ppd_acceptance_card {
     display: flex;
     flex-direction: column;
-    gap: 20px;
 }
-.ppd_workload_card {
+.ppd_acceptance_list {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    margin-top: 6px;
+}
+.ppd_acceptance_row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 5px 8px;
+    border-radius: 6px;
+    background: #f8fafc;
+    transition: background 0.15s;
+}
+.ppd_acceptance_row:hover {
+    background: #f1f5f9;
+}
+.ppd_acceptance_name {
+    font-size: 0.84rem;
+    font-weight: 600;
+    color: #334155;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 140px;
+}
+.ppd_clickable_pill {
+    cursor: pointer;
+    user-select: none;
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+.ppd_clickable_pill:hover {
+    transform: scale(1.04);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+.ppd_clickable_pill:active {
+    transform: scale(0.97);
+}
+
+.ppd_pill_signed {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #065f46;
+    background-color: #d1fae5;
+    border: 1px solid #a7f3d0;
+    padding: 3px 10px;
+    border-radius: 12px;
+}
+.ppd_pill_awaiting {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #6b21a8;
+    background-color: #f3e8ff;
+    border: 1px solid #d8b4fe;
+    padding: 3px 10px;
+    border-radius: 12px;
+}
+.ppd_pill_inprogress {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #0369a1;
+    background-color: #e0f2fe;
+    border: 1px solid #bae6fd;
+    padding: 3px 10px;
+    border-radius: 12px;
+}
+.ppd_pill_pending {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #64748b;
+    background-color: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    padding: 3px 10px;
+    border-radius: 12px;
+}
+
+/* ── Client Pending Actions Card ── */
+.ppd_client_actions_card {
+    display: flex;
+    flex-direction: column;
+}
+.ppd_client_actions_list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 6px;
+    max-height: 240px;
+    overflow-y: auto;
+}
+.ppd_client_action_item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 8px;
+    border-radius: 8px;
+    background: #f8fafc;
+    border: 1px solid #edf2f7;
+    transition: all 0.15s;
+}
+.ppd_client_action_item:hover {
+    background: #fff;
+    border-color: #cbd5e1;
+}
+.ppd_action_check_wrap {
+    cursor: pointer;
+    padding-top: 2px;
+}
+.ppd_check_icon {
+    font-size: 1.1rem;
+    transition: color 0.15s;
+}
+.ppd_action_content {
     flex-grow: 1;
-    min-height: 200px;
+    min-width: 0;
 }
+.ppd_action_name {
+    display: block;
+    font-size: 0.83rem;
+    font-weight: 600;
+    color: #1e293b;
+    line-height: 1.3;
+}
+.ppd_action_done .ppd_action_name {
+    text-decoration: line-through;
+    color: #94a3b8;
+}
+.ppd_action_sub {
+    font-size: 0.73rem;
+    margin-top: 2px;
+}
+
+/* ── Go-Live Readiness Card ── */
 .ppd_golive_card {
     text-align: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
 }
 .ppd_golive_gauge_wrap {
     position: relative;
-    width: 100px;
-    height: 50px;
-    margin: 10px auto;
+    width: 120px;
+    height: 60px;
+    margin: 8px auto 0;
 }
 .ppd_golive_gauge {
     width: 100%;
     height: 100%;
 }
-.ppd_gauge_bg { stroke: #e9ecef; }
+.ppd_gauge_bg { stroke: #e2e8f0; }
 .ppd_gauge_fill {
-    transition: stroke-dasharray 1s ease-out;
+    transition: stroke-dasharray 1s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.ppd_gauge_good { stroke: #28a745; }
-.ppd_gauge_warn { stroke: #fd7e14; }
-.ppd_gauge_bad { stroke: #dc3545; }
+.ppd_gauge_good { stroke: #10b981; }
+.ppd_gauge_warn { stroke: #f59e0b; }
+.ppd_gauge_bad { stroke: #ef4444; }
 .ppd_gauge_score {
     position: absolute;
     bottom: 0;
     left: 0; right: 0;
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: #1e2a3a;
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: #1e293b;
 }
 .ppd_gauge_score small {
     font-size: 0.75rem;
-    color: #6c757d;
+    color: #94a3b8;
+    font-weight: 600;
 }
 
-.ppd_row2_grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 20px;
+/* ── Risks & Issues Card ── */
+.ppd_risks_card {
+    display: flex;
+    flex-direction: column;
 }
+.ppd_risk_name {
+    font-size: 0.83rem;
+    font-weight: 600;
+    color: #1e293b;
+    line-height: 1.3;
+}
+.ppd_type_badge {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 1px 5px;
+    border-radius: 4px;
+}
+.ppd_type_risk { background-color: #fee2e2; color: #b91c1c; }
+.ppd_type_issue { background-color: #ffedd5; color: #c2410c; }
 
+.ppd_sev_pill {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 12px;
+    text-align: center;
+}
+.ppd_sev_high { background-color: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
+.ppd_sev_medium { background-color: #fef3c7; color: #d97706; border: 1px solid #fde68a; }
+.ppd_sev_low { background-color: #d1fae5; color: #059669; border: 1px solid #a7f3d0; }
+
+/* ── Timeline Card ── */
 .ppd_timeline_card {
-    padding: 20px;
+    display: flex;
+    flex-direction: column;
 }
 .ppd_timeline {
     display: flex;
     flex-direction: column;
-    gap: 15px;
-    margin-top: 15px;
+    gap: 12px;
+    margin-top: 10px;
 }
 .ppd_timeline_row {
     display: flex;
     align-items: center;
-    gap: 15px;
+    gap: 12px;
 }
 .ppd_timeline_label {
-    width: 120px;
-    font-size: 0.9rem;
+    width: 100px;
+    font-size: 0.82rem;
     font-weight: 600;
-    color: #1e2a3a;
+    color: #334155;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 .ppd_timeline_bar_area {
     flex-grow: 1;
-    background-color: #f8f9fa;
-    height: 30px;
-    border-radius: 4px;
+    background-color: #f1f5f9;
+    height: 24px;
+    border-radius: 6px;
     position: relative;
     display: flex;
     align-items: center;
@@ -637,36 +967,15 @@
     height: 100%;
     position: absolute;
     left: 0; top: 0;
-    border-radius: 4px;
+    border-radius: 6px;
 }
-.ppd_bar_complete { background-color: rgba(40, 167, 69, 0.2); border-left: 4px solid #28a745; }
-.ppd_bar_active { background-color: rgba(13, 110, 253, 0.2); border-left: 4px solid #0d6efd; }
+.ppd_bar_complete { background-color: rgba(16, 185, 129, 0.25); border-left: 4px solid #10b981; }
+.ppd_bar_active { background-color: rgba(59, 130, 246, 0.25); border-left: 4px solid #3b82f6; }
 .ppd_timeline_dates {
     position: relative;
     z-index: 1;
     padding-left: 10px;
-    font-size: 0.8rem;
-    color: #495057;
-}
-
-@media (max-width: 1200px) {
-    .ppd_main_grid, .ppd_row2_grid {
-        grid-template-columns: 1fr 1fr;
-    }
-    .ppd_right_sidebar {
-        grid-column: span 2;
-        flex-direction: row;
-    }
-    .ppd_workload_card, .ppd_golive_card {
-        flex: 1;
-    }
-}
-@media (max-width: 768px) {
-    .ppd_main_grid, .ppd_row2_grid {
-        grid-template-columns: 1fr;
-    }
-    .ppd_right_sidebar {
-        grid-column: 1;
-        flex-direction: column;
-    }
+    font-size: 0.74rem;
+    color: #475569;
+    font-weight: 500;
 }
