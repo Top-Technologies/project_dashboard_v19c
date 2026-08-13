@@ -15,23 +15,26 @@ class ProjectTaskType(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        if not self.env.user.has_group('base.group_system'):
-            raise UserError(
-                "Task stages are managed by the system administrator. "
-                "You cannot create custom stages."
-            )
-        for vals in vals_list:
-            if vals.get('name') in RESERVED_STAGE_NAMES:
+        if not self.env.context.get('install_mode'):
+            if not self.env.user.has_group('base.group_system'):
                 raise UserError(
-                    "A stage named '%s' already exists and is managed by "
-                    "the system. Creating another stage with this exact "
-                    "name is not allowed, as it would create duplicate "
-                    "stages on new projects." % vals.get('name')
+                    "Task stages are managed by the system administrator. "
+                    "You cannot create custom stages."
                 )
+            for vals in vals_list:
+                name = vals.get('name')
+                if name in RESERVED_STAGE_NAMES:
+                    if self.search_count([('name', '=', name)]) > 0:
+                        raise UserError(
+                            "A stage named '%s' already exists and is managed by "
+                            "the system. Creating another stage with this exact "
+                            "name is not allowed, as it would create duplicate "
+                            "stages on new projects." % name
+                        )
         return super().create(vals_list)
 
     def write(self, vals):
-        if not self.env.user.has_group('base.group_system'):
+        if not self.env.context.get('install_mode') and not self.env.user.has_group('base.group_system'):
             raise UserError(
                 "Task stages are managed by the system administrator. "
                 "You cannot modify stages."
@@ -39,7 +42,7 @@ class ProjectTaskType(models.Model):
         return super().write(vals)
 
     def unlink(self):
-        if not self.env.user.has_group('base.group_system'):
+        if not self.env.context.get('install_mode') and not self.env.user.has_group('base.group_system'):
             raise UserError(
                 "Task stages are managed by the system administrator. "
                 "You cannot delete stages."
