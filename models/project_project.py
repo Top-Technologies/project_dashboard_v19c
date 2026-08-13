@@ -28,6 +28,18 @@ class ProjectProject(models.Model):
         tracking=True,
     )
 
+    x_risk_issue_ids = fields.One2many(
+        'project.risk.issue',
+        'project_id',
+        string='Risks & Issues',
+    )
+
+    x_client_action_ids = fields.One2many(
+        'project.client.action',
+        'project_id',
+        string='Client Pending Actions',
+    )
+
     x_assigned_user_ids = fields.Many2many(
         'res.users',
         string='Users Assigned to Any Task',
@@ -123,6 +135,51 @@ class ProjectProject(models.Model):
                 self.env['project.milestone'].create(milestones_to_create)
         return res
 
+
+    def _sync_project_status(self):
+        """Auto-update x_project_status based on task completion.
+
+        Rules (only for client projects, never touches Cancelled):
+        - No tasks at all          → 'new'
+        - Some tasks, none Done    → 'in_progress'
+        - Some tasks, some Done    → 'in_progress'
+        - All tasks Done/Cancelled → 'done'
+        """
+        for project in self:
+            # Never auto-change a Cancelled project
+            if project.x_project_status == 'cancelled':
+                continue
+
+            Task = self.env['project.task'].sudo()
+            # Only count parent tasks (not subtasks) to avoid double-counting
+            tasks = Task.search([
+                ('project_id', '=', project.id),
+                ('parent_id', '=', False),
+            ])
+
+            if not tasks:
+                # No tasks yet — keep/set to New
+                if project.x_project_status != 'new':
+                    project.write({'x_project_status': 'new'})
+                continue
+
+            terminal_stages = {'Done', 'Cancelled'}
+            active_tasks = tasks.filtered(
+                lambda t: t.stage_id.name not in terminal_stages
+            )
+            done_tasks = tasks.filtered(
+                lambda t: t.stage_id.name == 'Done'
+            )
+
+            if len(done_tasks) == len(tasks):
+                # All tasks are Done
+                new_status = 'done'
+            else:
+                # At least one task is still active
+                new_status = 'in_progress'
+
+            if project.x_project_status != new_status:
+                project.write({'x_project_status': new_status})
 
     def action_set_status_new(self):
         self.write({'x_project_status': 'new'})
