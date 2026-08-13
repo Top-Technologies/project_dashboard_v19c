@@ -27,6 +27,7 @@ class ProjectDashboardController(http.Controller):
         all_projects = Project.search([('x_project_type', '=', project_type)])
         total_projects = len(all_projects)
         active_projects = len(all_projects.filtered(lambda p: p.x_project_status == 'in_progress'))
+        on_hold_projects = len(all_projects.filtered(lambda p: p.x_project_status == 'on_hold'))
         completed_projects = len(all_projects.filtered(lambda p: p.x_project_status == 'done'))
         cancelled_projects = len(all_projects.filtered(lambda p: p.x_project_status == 'cancelled'))
 
@@ -40,13 +41,14 @@ class ProjectDashboardController(http.Controller):
         overdue_tasks = len(overdue_tasks_list)
 
         # ── Projects by Status (donut) ────────────────────────────────────────
-        status_counts = {'new': 0, 'in_progress': 0, 'done': 0, 'cancelled': 0}
+        status_counts = {'new': 0, 'in_progress': 0, 'on_hold': 0, 'done': 0, 'cancelled': 0}
         for p in all_projects:
             status_counts[p.x_project_status] = status_counts.get(p.x_project_status, 0) + 1
 
         projects_by_status = [
             {'label': 'New',         'count': status_counts['new'],         'key': 'new'},
             {'label': 'In Progress', 'count': status_counts['in_progress'], 'key': 'in_progress'},
+            {'label': 'On Hold',     'count': status_counts['on_hold'],     'key': 'on_hold'},
             {'label': 'Done',        'count': status_counts['done'],         'key': 'done'},
             {'label': 'Cancelled',   'count': status_counts['cancelled'],   'key': 'cancelled'},
         ]
@@ -224,10 +226,32 @@ class ProjectDashboardController(http.Controller):
                 'message': f'{len(due_in_7)} task(s) due in the next 7 days',
             })
 
+        # ── Timesheet Summary ────────────────────────────────────────────────
+        timesheet_summary = []
+        if 'account.analytic.line' in request.env:
+            AnalyticLine = request.env['account.analytic.line'].sudo()
+            # Group by project to get total timesheet hours per project
+            timesheets = AnalyticLine.read_group(
+                [('project_id', 'in', all_projects.ids)],
+                ['project_id', 'unit_amount'],
+                ['project_id']
+            )
+            for ts in timesheets:
+                project_id_val = ts['project_id'][0] if ts['project_id'] else False
+                project_name = ts['project_id'][1] if ts['project_id'] else 'Unknown'
+                if project_id_val:
+                    timesheet_summary.append({
+                        'project_id': project_id_val,
+                        'project_name': project_name,
+                        'total_hours': round(ts['unit_amount'], 2) if ts.get('unit_amount') else 0.0,
+                    })
+            timesheet_summary = sorted(timesheet_summary, key=lambda x: x['total_hours'], reverse=True)[:10]
+
         return {
             'kpis': {
                 'total_projects': total_projects,
                 'active_projects': active_projects,
+                'on_hold_projects': on_hold_projects,
                 'completed_projects': completed_projects,
                 'cancelled_projects': cancelled_projects,
                 'total_tasks': total_tasks,
@@ -242,6 +266,7 @@ class ProjectDashboardController(http.Controller):
             'upcoming_deadlines': upcoming_deadlines,
             'recent_activities': recent_activities,
             'alerts': alerts,
+            'timesheet_summary': timesheet_summary,
         }
 
     @http.route('/project_dashboard_v19c/projects_list', type='jsonrpc', auth='user')
@@ -518,6 +543,50 @@ class ProjectDashboardController(http.Controller):
                 'critical': days_left <= 3,
             })
         
+        # ── Timesheet by Task ───────────────────────────────────────────────
+        task_timesheets = []
+        if 'account.analytic.line' in request.env and all_tasks:
+            AnalyticLine = request.env['account.analytic.line'].sudo()
+            task_ts_data = AnalyticLine.read_group(
+                [('task_id', 'in', all_tasks.ids)],
+                ['task_id', 'unit_amount'],
+                ['task_id']
+            )
+            
+            task_dict = {t.id: t for t in all_tasks}
+            
+            for ts in task_ts_data:
+                task_id_val = ts['task_id'][0] if ts['task_id'] else False
+                task_name = ts['task_id'][1] if ts['task_id'] else 'Unknown'
+                if task_id_val:
+                    task = task_dict.get(task_id_val)
+                    allocated_hours = getattr(task, 'allocated_hours', 0.0) if task else 0.0
+                    total_hours = round(ts['unit_amount'], 2) if ts.get('unit_amount') else 0.0
+                    
+                    is_delayed = False
+                    if task and not is_task_done(task) and task.date_deadline and task.date_deadline.strftime('%Y-%m-%d') < today.strftime('%Y-%m-%d'):
+                        is_delayed = True
+                        
+                    if allocated_hours > 0 and total_hours > allocated_hours:
+                        status = 'Over Allocated'
+                        status_color = 'danger'
+                    elif is_delayed:
+                        status = 'Delayed'
+                        status_color = 'warning'
+                    else:
+                        status = 'On Track'
+                        status_color = 'success'
+
+                    task_timesheets.append({
+                        'task_id': task_id_val,
+                        'task_name': task_name,
+                        'allocated_hours': round(allocated_hours, 2),
+                        'total_hours': total_hours,
+                        'status': status,
+                        'status_color': status_color,
+                    })
+            task_timesheets = sorted(task_timesheets, key=lambda x: x['total_hours'], reverse=True)[:10]
+
         return {
             'project': project_info,
             'milestones': milestones_data,
@@ -529,6 +598,7 @@ class ProjectDashboardController(http.Controller):
             'go_live_readiness': go_live_readiness,
             'upcoming_deadlines': upcoming_deadlines,
             'timeline': timeline,
+            'task_timesheets': task_timesheets,
         }
 
     @http.route('/project_dashboard_v19c/toggle_milestone_reached', type='jsonrpc', auth='user')
