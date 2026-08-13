@@ -133,6 +133,10 @@ export class ProjectDashboard extends Component {
         this.openProjects([["x_project_status", "=", "in_progress"], ["x_project_type", "=", this.state.projectType]], "Active Projects");
     }
 
+    onKpiOnHoldProjectsClick() {
+        this.openProjects([["x_project_status", "=", "on_hold"], ["x_project_type", "=", this.state.projectType]], "On Hold Projects");
+    }
+
     onKpiCompletedProjectsClick() {
         this.openProjects([["x_project_status", "=", "done"], ["x_project_type", "=", this.state.projectType]], "Completed Projects");
     }
