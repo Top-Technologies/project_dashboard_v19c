@@ -4,11 +4,18 @@
     <t t-name="project_dashboard_v19c.ProjectDashboard">
         <div class="o_project_dashboard">
 
-            <!-- ── Header ── -->
             <div class="pd_header">
                 <div class="pd_header_left">
                     <h2>Project Dashboard</h2>
-                    <span class="pd_subtitle">Real-time overview of client projects and tasks</span>
+                    <span class="pd_subtitle">Real-time overview of projects and tasks</span>
+                    <div class="btn-group mt-2 ms-3" role="group">
+                        <button type="button" 
+                                t-att-class="'btn btn-sm ' + (state.projectType === 'client' ? 'btn-primary' : 'btn-outline-primary')"
+                                t-on-click="() => this.setProjectType('client')">Client Projects</button>
+                        <button type="button" 
+                                t-att-class="'btn btn-sm ' + (state.projectType === 'internal' ? 'btn-primary' : 'btn-outline-primary')"
+                                t-on-click="() => this.setProjectType('internal')">Internal Projects</button>
+                    </div>
                 </div>
                 <div class="pd_header_right">
                     <button class="btn btn-secondary btn-sm me-2" t-on-click="onDetailedDashboardClick">
@@ -218,32 +225,34 @@
                     <div class="pd_table_card">
                         <div class="pd_card_title">Recently Created Tasks</div>
                         <span class="pd_card_subtitle">Last 3 days</span>
-                        <t t-if="state.data.recent_activities.length === 0">
-                            <div class="pd_empty">No tasks created in the last 3 days</div>
-                        </t>
-                        <t t-foreach="state.data.recent_activities" t-as="act" t-key="act_index">
-                            <div class="pd_activity_row pd_row_clickable" t-on-click="() => this.onRecentTaskClick(act.id)">
-                                <div class="pd_activity_avatar">
-                                    <t t-esc="act.name[0]"/>
+                        <div class="pd_activity_scroll">
+                            <t t-if="state.data.recent_activities.length === 0">
+                                <div class="pd_empty">No tasks created in the last 3 days</div>
+                            </t>
+                            <t t-foreach="state.data.recent_activities" t-as="act" t-key="act_index">
+                                <div class="pd_activity_row pd_row_clickable" t-on-click="() => this.onRecentTaskClick(act.id)">
+                                    <div class="pd_activity_avatar">
+                                        <t t-esc="act.name[0]"/>
+                                    </div>
+                                    <div class="pd_activity_body">
+                                        <strong>
+                                            <t t-esc="act.name"/>
+                                        </strong>
+                                        <span t-att-class="'pd_stage_badge ' + (act.stage === 'New' ? 'pd_stage_new' : act.stage === 'In Progress' ? 'pd_stage_inprogress' : act.stage === 'Done' ? 'pd_stage_done' : act.stage === 'Cancelled' ? 'pd_stage_cancelled' : 'pd_stage_unknown')">
+                                            <t t-esc="act.stage"/>
+                                        </span>
+                                        <br/>
+                                        <small class="text-muted">
+                                            <t t-esc="act.project"/>
+ •                                            <t t-esc="act.assignees"/>
+                                        </small>
+                                        <span class="pd_activity_date">
+                                            <t t-esc="act.created"/>
+                                        </span>
+                                    </div>
                                 </div>
-                                <div class="pd_activity_body">
-                                    <strong>
-                                        <t t-esc="act.name"/>
-                                    </strong>
-                                    <span t-att-class="'pd_stage_badge ' + (act.stage === 'New' ? 'pd_stage_new' : act.stage === 'In Progress' ? 'pd_stage_inprogress' : act.stage === 'Done' ? 'pd_stage_done' : act.stage === 'Cancelled' ? 'pd_stage_cancelled' : 'pd_stage_unknown')">
-                                        <t t-esc="act.stage"/>
-                                    </span>
-                                    <br/>
-                                    <small class="text-muted">
-                                        <t t-esc="act.project"/>
- •                                        <t t-esc="act.assignees"/>
-                                    </small>
-                                    <span class="pd_activity_date">
-                                        <t t-esc="act.created"/>
-                                    </span>
-                                </div>
-                            </div>
-                        </t>
+                            </t>
+                        </div>
                     </div>
 
                     <div class="pd_table_card">
@@ -348,16 +357,34 @@ d</td>
                 <button class="btn btn-outline-secondary btn-sm" t-on-click="onBackClick">
                     <i class="fa fa-arrow-left me-1"/>Back to Dashboard
                 </button>
-                <h2 t-if="state.data">PROJECT DASHBOARD: <t t-esc="state.data.project.name"/></h2>
-                <h2 t-else="">PROJECT DASHBOARD</h2>
-                <select class="ppd_project_select" t-on-change="onProjectChange">
-                    <option value="" disabled="disabled" t-att-selected="!state.selectedProjectId">Select Project...</option>
-                    <t t-foreach="state.projectsList" t-as="p" t-key="p.id">
-                        <option t-att-value="p.id" t-att-selected="p.id === state.selectedProjectId">
-                            <t t-esc="p.name"/>
-                        </option>
-                    </t>
-                </select>
+                <div class="ppd_header_title_wrap">
+                    <h2 t-if="state.data">PROJECT DASHBOARD: <t t-esc="state.data.project.name"/></h2>
+                    <h2 t-else="">PROJECT DASHBOARD</h2>
+                    <span t-if="state.data" class="ppd_header_badge badge" t-att-class="'ppd_status_' + state.data.project.status">
+                        <t t-esc="state.data.project.status === 'in_progress' ? 'In Progress' : state.data.project.status === 'done' ? 'Done' : state.data.project.status === 'cancelled' ? 'Cancelled' : 'New'"/>
+                    </span>
+                </div>
+                <div class="ppd_header_actions d-flex align-items-center">
+                    <div class="btn-group me-3" role="group">
+                        <button type="button" 
+                                t-att-class="'btn btn-sm ' + (state.projectType === 'client' ? 'btn-primary' : 'btn-outline-primary')"
+                                t-on-click="() => this.setProjectType('client')">Client</button>
+                        <button type="button" 
+                                t-att-class="'btn btn-sm ' + (state.projectType === 'internal' ? 'btn-primary' : 'btn-outline-primary')"
+                                t-on-click="() => this.setProjectType('internal')">Internal</button>
+                    </div>
+                    <select class="ppd_project_select" t-on-change="onProjectChange">
+                        <option value="" disabled="disabled" t-att-selected="!state.selectedProjectId">Select Project...</option>
+                        <t t-foreach="state.projectsList" t-as="p" t-key="p.id">
+                            <option t-att-value="p.id" t-att-selected="p.id === state.selectedProjectId">
+                                <t t-esc="p.name"/>
+                            </option>
+                        </t>
+                    </select>
+                    <button class="btn btn-primary btn-sm ms-2" t-on-click="() => this.loadProjectDetail(this.state.selectedProjectId)">
+                        <i class="fa fa-refresh me-1"/>
+                    </button>
+                </div>
             </div>
 
             <!-- ── Loading state ── -->
@@ -385,11 +412,11 @@ d</td>
 
             <t t-elif="state.data">
                 
-                <!-- ── Row 1 ── -->
-                <div class="ppd_main_grid">
+                <!-- ════════════════════ ROW 1 ════════════════════ -->
+                <div class="ppd_row1_grid">
                     
-                    <!-- Overall Progress -->
-                    <div class="ppd_progress_card pd_table_card">
+                    <!-- 1. Overall Project Progress -->
+                    <div class="pd_table_card ppd_progress_card">
                         <div class="pd_card_title">Overall Project Progress</div>
                         <div class="ppd_donut_wrap">
                             <svg class="ppd_donut_svg" viewBox="0 0 120 120">
@@ -402,73 +429,168 @@ d</td>
                             </div>
                         </div>
                         <div class="ppd_progress_meta">
-                            <span><t t-esc="state.data.project.overall_progress"/>% Complete</span>
-                            <span><t t-esc="100 - state.data.project.overall_progress"/>% Remaining</span>
-                            <span>Start: <t t-esc="state.data.project.start_date"/></span>
+                            <div class="d-flex justify-content-between w-100">
+                                <span class="text-primary fw-bold"><t t-esc="state.data.project.overall_progress"/>% Complete</span>
+                                <span class="text-muted"><t t-esc="100 - state.data.project.overall_progress"/>% Remaining</span>
+                            </div>
+                            <span class="ppd_start_date text-muted mt-1">Start: <t t-esc="state.data.project.start_date"/></span>
                         </div>
                     </div>
 
-                    <!-- Key Milestones -->
-                    <div class="ppd_milestones_card pd_table_card">
+                    <!-- 2. Key Milestones -->
+                    <div class="pd_table_card ppd_milestones_card">
                         <div class="pd_card_title">Key Milestones</div>
-                        <t t-foreach="state.data.milestones" t-as="ms" t-key="ms.id">
-                            <div class="ppd_milestone_row">
-                                <div class="ppd_milestone_dot" t-att-class="ms.is_reached ? 'ppd_dot_reached' : ''"/>
-                                <span class="ppd_milestone_name"><t t-esc="ms.name"/></span>
-                                <div class="ppd_milestone_bar_wrap">
-                                    <div class="pd_progress_bar">
-                                        <div class="pd_progress_fill" t-att-style="'width: ' + ms.progress + '%'"
-                                             t-att-class="ms.progress === 100 ? 'ppd_fill_complete' : ms.progress >= 50 ? 'ppd_fill_good' : ''"/>
+                        <div class="ppd_milestone_list">
+                            <t t-foreach="state.data.milestones" t-as="ms" t-key="ms.id">
+                                <div class="ppd_milestone_row">
+                                    <div class="ppd_milestone_dot" t-att-class="ms.is_reached ? 'ppd_dot_reached' : (ms.progress > 0 ? 'ppd_dot_active' : '')"/>
+                                    <span class="ppd_milestone_name" t-att-title="ms.name"><t t-esc="ms.name"/></span>
+                                    <div class="ppd_milestone_bar_wrap">
+                                        <div class="pd_progress_bar">
+                                            <div class="pd_progress_fill" t-att-style="'width: ' + ms.progress + '%'"
+                                                 t-att-class="ms.progress === 100 ? 'ppd_fill_complete' : ms.progress >= 50 ? 'ppd_fill_good' : ''"/>
+                                        </div>
+                                    </div>
+                                    <span class="ppd_milestone_pct"><t t-esc="ms.progress"/>%</span>
+                                </div>
+                            </t>
+                            <t t-if="!state.data.milestones || state.data.milestones.length === 0">
+                                <div class="pd_empty">No milestones found</div>
+                            </t>
+                        </div>
+                    </div>
+
+                    <!-- 3. Milestone Acceptance / Sign-Off -->
+                    <div class="pd_table_card ppd_acceptance_card">
+                        <div class="pd_card_title">
+                            <span>Milestone Acceptance/Sign-Off</span>
+                            <i class="fa fa-info-circle text-muted" title="Click 'Awaiting' or 'Signed' to toggle sign-off status"/>
+                        </div>
+                        <div class="ppd_acceptance_list">
+                            <t t-foreach="state.data.milestones" t-as="ms" t-key="ms.id">
+                                <div class="ppd_acceptance_row">
+                                    <span class="ppd_acceptance_name" t-att-title="ms.name"><t t-esc="ms.name"/></span>
+                                    <div class="ppd_acceptance_badge_wrap">
+                                        <t t-if="ms.acceptance_status === 'signed'">
+                                            <span class="ppd_pill_signed ppd_clickable_pill" t-on-click="() => this.onToggleMilestone(ms.id)" title="Milestone reached and signed! Click to unmark.">
+                                                <i class="fa fa-check me-1"/>Signed
+                                            </span>
+                                        </t>
+                                        <t t-elif="ms.acceptance_status === 'awaiting'">
+                                            <span class="ppd_pill_awaiting ppd_clickable_pill" t-on-click="() => this.onToggleMilestone(ms.id)" title="Tasks 100% complete! Click to Sign off / Reach.">
+                                                <i class="fa fa-clock-o me-1"/>Awaiting
+                                            </span>
+                                        </t>
+                                        <t t-elif="ms.acceptance_status === 'in_progress'">
+                                            <span class="ppd_pill_inprogress" title="Phase is currently in progress">
+                                                In Progress
+                                            </span>
+                                        </t>
+                                        <t t-else="">
+                                            <span class="ppd_pill_pending" title="Phase pending start">
+                                                Pending
+                                            </span>
+                                        </t>
                                     </div>
                                 </div>
-                                <span class="ppd_milestone_pct"><t t-esc="ms.progress"/>%</span>
-                            </div>
-                        </t>
-                        <t t-if="!state.data.milestones || state.data.milestones.length === 0">
-                            <div class="pd_empty">No milestones</div>
-                        </t>
+                            </t>
+                            <t t-if="!state.data.milestones || state.data.milestones.length === 0">
+                                <div class="pd_empty">No milestones</div>
+                            </t>
+                        </div>
                     </div>
 
-                    <!-- Right Sidebar -->
-                    <div class="ppd_right_sidebar">
-                        <div class="pd_chart_card ppd_workload_card">
-                            <div class="pd_card_title">Project Workload</div>
-                            <div class="pd_chart_container">
-                                <canvas t-ref="chartWorkload" class="pd_canvas"/>
-                            </div>
-                        </div>
-                        <div class="ppd_golive_card pd_table_card">
-                            <div class="pd_card_title">Go-Live Readiness</div>
-                            <div class="ppd_golive_gauge_wrap">
-                                <svg class="ppd_golive_gauge" viewBox="0 0 100 50">
-                                    <path class="ppd_gauge_bg" d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke-width="15" stroke-linecap="round"/>
-                                    <path class="ppd_gauge_fill" d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke-width="15" stroke-linecap="round"
-                                          t-att-class="state.data.go_live_readiness >= 80 ? 'ppd_gauge_good' : state.data.go_live_readiness >= 50 ? 'ppd_gauge_warn' : 'ppd_gauge_bad'"
-                                          t-att-style="'stroke-dasharray: ' + (state.data.go_live_readiness * 125.66 / 100) + ' 125.66'"/>
-                                </svg>
-                                <div class="ppd_gauge_score">
-                                    <span><t t-esc="state.data.go_live_readiness"/></span><small>/100</small>
-                                </div>
-                            </div>
+                    <!-- 4. Project Workload -->
+                    <div class="pd_chart_card ppd_workload_card">
+                        <div class="pd_card_title">Project Workload</div>
+                        <div class="pd_chart_container">
+                            <canvas t-ref="chartWorkload" class="pd_canvas"/>
                         </div>
                     </div>
+
                 </div>
 
-                <!-- ── Row 2 ── -->
-                <div class="ppd_row2_grid">
+                <!-- ════════════════════ ROW 2 ════════════════════ -->
+                <div class="ppd_row2_grid mt-3">
+                    
+                    <!-- 1. Tasks by Status -->
                     <div class="pd_chart_card">
                         <div class="pd_card_title">Tasks by Status</div>
                         <div class="pd_chart_container">
                             <canvas t-ref="chartTasksStatus" class="pd_canvas"/>
                         </div>
                     </div>
+
+                    <!-- 2. Tasks by Assignee -->
                     <div class="pd_chart_card">
-                        <div class="pd_card_title">Tasks by Assignee</div>
+                        <div class="pd_card_title">Tasks by Consultant/Team</div>
                         <div class="pd_chart_container">
                             <canvas t-ref="chartTasksConsultant" class="pd_canvas"/>
                         </div>
                     </div>
-                    <div class="pd_table_card">
+
+                    <!-- 3. Client Pending Actions -->
+                    <div class="pd_table_card ppd_client_actions_card">
+                        <div class="pd_card_title">
+                            <span>Client Pending Actions</span>
+                            <button class="btn btn-link btn-sm p-0 text-primary" t-on-click="onAddClientAction" title="Add Client Action">
+                                <i class="fa fa-plus-circle fa-lg"/>
+                            </button>
+                        </div>
+                        <div class="ppd_client_actions_list">
+                            <t t-if="!state.data.client_actions || state.data.client_actions.length === 0">
+                                <div class="pd_empty">No pending client actions 🎉</div>
+                            </t>
+                            <t t-foreach="state.data.client_actions" t-as="ca" t-key="ca.id">
+                                <div class="ppd_client_action_item" t-att-class="ca.is_done ? 'ppd_action_done' : ''">
+                                    <div class="ppd_action_check_wrap" t-on-click="() => this.onToggleClientAction(ca.id)">
+                                        <i t-if="ca.is_done" class="fa fa-check-circle text-success ppd_check_icon"/>
+                                        <i t-else="" class="fa fa-circle-o text-muted ppd_check_icon"/>
+                                    </div>
+                                    <div class="ppd_action_content">
+                                        <span class="ppd_action_name"><t t-esc="ca.name"/></span>
+                                        <div class="ppd_action_sub">
+                                            <span t-if="ca.date_due" class="ppd_action_due text-muted">
+                                                <i class="fa fa-calendar-o me-1"/>Due: <t t-esc="ca.date_due"/>
+                                            </span>
+                                            <span t-if="ca.contact" class="ppd_action_contact text-muted ms-2">
+                                                <i class="fa fa-user-o me-1"/><t t-esc="ca.contact"/>
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </t>
+                        </div>
+                    </div>
+
+                    <!-- 4. Go-Live Readiness -->
+                    <div class="pd_table_card ppd_golive_card">
+                        <div class="pd_card_title">Go-Live Readiness</div>
+                        <div class="ppd_golive_gauge_wrap">
+                            <svg class="ppd_golive_gauge" viewBox="0 0 100 50">
+                                <path class="ppd_gauge_bg" d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke-width="14" stroke-linecap="round"/>
+                                <path class="ppd_gauge_fill" d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke-width="14" stroke-linecap="round"
+                                      t-att-class="state.data.go_live_readiness >= 80 ? 'ppd_gauge_good' : state.data.go_live_readiness >= 50 ? 'ppd_gauge_warn' : 'ppd_gauge_bad'"
+                                      t-att-style="'stroke-dasharray: ' + (state.data.go_live_readiness * 125.66 / 100) + ' 125.66'"/>
+                            </svg>
+                            <div class="ppd_gauge_score">
+                                <span><t t-esc="state.data.go_live_readiness"/></span><small>/100</small>
+                            </div>
+                        </div>
+                        <div class="ppd_golive_badge_wrap mt-2">
+                            <span t-if="state.data.go_live_readiness >= 80" class="badge bg-success px-3 py-1">Ready</span>
+                            <span t-elif="state.data.go_live_readiness >= 50" class="badge bg-warning text-dark px-3 py-1">On Track</span>
+                            <span t-else="" class="badge bg-danger px-3 py-1">Needs Attention</span>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- ════════════════════ ROW 3 ════════════════════ -->
+                <div class="ppd_row3_grid mt-3">
+                    
+                    <!-- 1. Upcoming Deadlines -->
+                    <div class="pd_table_card ppd_deadlines_card">
                         <div class="pd_card_title">Upcoming Deadlines</div>
                         <table class="pd_table">
                             <thead>
@@ -485,7 +607,7 @@ d</td>
                                     </tr>
                                 </t>
                                 <t t-foreach="state.data.upcoming_deadlines" t-as="d" t-key="d.id">
-                                    <tr>
+                                    <tr class="pd_row_clickable" t-on-click="() => this.openTask(d.id)">
                                         <td>
                                             <t t-esc="d.name"/>
                                             <t t-if="d.critical"><span class="badge bg-danger ms-1">Critical</span></t>
@@ -499,27 +621,74 @@ d</td>
                             </tbody>
                         </table>
                     </div>
-                </div>
 
-                <!-- ── Row 3 ── -->
-                <div class="ppd_timeline_card pd_table_card mt-3">
-                    <div class="pd_card_title">Project Timeline</div>
-                    <div class="ppd_timeline">
-                        <t t-foreach="state.data.timeline" t-as="phase" t-key="phase_index">
-                            <div class="ppd_timeline_row">
-                                <div class="ppd_timeline_label"><t t-esc="phase.name"/></div>
-                                <div class="ppd_timeline_bar_area">
-                                    <div class="ppd_timeline_bar" t-att-style="'width: ' + (phase.progress || 5) + '%'"
-                                         t-att-class="phase.is_reached ? 'ppd_bar_complete' : 'ppd_bar_active'">
+                    <!-- 2. Project Timeline / Gantt -->
+                    <div class="pd_table_card ppd_timeline_card">
+                        <div class="pd_card_title">Project Timeline / Gantt</div>
+                        <div class="ppd_timeline">
+                            <t t-foreach="state.data.timeline" t-as="phase" t-key="phase_index">
+                                <div class="ppd_timeline_row">
+                                    <div class="ppd_timeline_label" t-att-title="phase.name"><t t-esc="phase.name"/></div>
+                                    <div class="ppd_timeline_bar_area">
+                                        <div class="ppd_timeline_bar" t-att-style="'width: ' + (phase.progress || 5) + '%'"
+                                             t-att-class="phase.is_reached ? 'ppd_bar_complete' : 'ppd_bar_active'">
+                                        </div>
+                                        <span class="ppd_timeline_dates" t-if="phase.has_dates">
+                                            <t t-esc="phase.start"/> — <t t-esc="phase.end"/>
+                                        </span>
+                                        <span class="ppd_timeline_dates text-muted fst-italic" t-else="">
+                                            <t t-esc="phase.progress"/>% complete · no deadlines set
+                                        </span>
                                     </div>
-                                    <span class="ppd_timeline_dates"><t t-esc="phase.start"/> — <t t-esc="phase.end"/></span>
                                 </div>
-                            </div>
-                        </t>
-                        <t t-if="!state.data.timeline || state.data.timeline.length === 0">
-                            <div class="pd_empty">No timeline data</div>
-                        </t>
+                            </t>
+                            <t t-if="!state.data.timeline || state.data.timeline.length === 0">
+                                <div class="pd_empty">No timeline data</div>
+                            </t>
+                        </div>
                     </div>
+
+                    <!-- 3. Risks & Issues -->
+                    <div class="pd_table_card ppd_risks_card">
+                        <div class="pd_card_title">
+                            <span>Risks &amp; Issues</span>
+                            <button class="btn btn-link btn-sm p-0 text-primary" t-on-click="onAddRiskIssue" title="Add Risk/Issue">
+                                <i class="fa fa-plus-circle fa-lg"/>
+                            </button>
+                        </div>
+                        <table class="pd_table">
+                            <thead>
+                                <tr>
+                                    <th>Item</th>
+                                    <th>Severity</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-if="!state.data.risks_and_issues || state.data.risks_and_issues.length === 0">
+                                    <tr>
+                                        <td colspan="2" class="pd_empty">No active risks or issues 🎉</td>
+                                    </tr>
+                                </t>
+                                <t t-foreach="state.data.risks_and_issues" t-as="ri" t-key="ri.id">
+                                    <tr class="pd_row_clickable" t-on-click="() => this.openRiskIssue(ri.id)">
+                                        <td>
+                                            <div class="ppd_risk_name"><t t-esc="ri.name"/></div>
+                                            <small class="text-muted">
+                                                <span t-att-class="'ppd_type_badge ppd_type_' + ri.type"><t t-esc="ri.type"/></span>
+                                                <t t-if="ri.assigned_to"> • <t t-esc="ri.assigned_to"/></t>
+                                            </small>
+                                        </td>
+                                        <td>
+                                            <span t-if="ri.severity === 'high'" class="ppd_sev_pill ppd_sev_high">High</span>
+                                            <span t-elif="ri.severity === 'medium'" class="ppd_sev_pill ppd_sev_medium">Medium</span>
+                                            <span t-else="" class="ppd_sev_pill ppd_sev_low">Low</span>
+                                        </td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+                    </div>
+
                 </div>
 
             </t>
