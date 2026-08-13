@@ -35,6 +35,7 @@ export class ProjectDashboard extends Component {
             loading: true,
             data: null,
             error: null,
+            projectType: "client",
         });
         this.chartProjectStatusRef = useRef("chartProjectStatus");
         this.chartTaskStageRef = useRef("chartTaskStage");
@@ -117,28 +118,35 @@ export class ProjectDashboard extends Component {
         );
     }
 
+    setProjectType(type) {
+        if (this.state.projectType !== type) {
+            this.state.projectType = type;
+            this.loadData();
+        }
+    }
+
     onKpiTotalProjectsClick() {
-        this.openProjects([["x_project_type", "=", "client"]], "All Projects");
+        this.openProjects([["x_project_type", "=", this.state.projectType]], "All Projects");
     }
 
     onKpiActiveProjectsClick() {
-        this.openProjects([["x_project_status", "=", "in_progress"], ["x_project_type", "=", "client"]], "Active Projects");
+        this.openProjects([["x_project_status", "=", "in_progress"], ["x_project_type", "=", this.state.projectType]], "Active Projects");
     }
 
     onKpiCompletedProjectsClick() {
-        this.openProjects([["x_project_status", "=", "done"], ["x_project_type", "=", "client"]], "Completed Projects");
+        this.openProjects([["x_project_status", "=", "done"], ["x_project_type", "=", this.state.projectType]], "Completed Projects");
     }
 
     onKpiCancelledProjectsClick() {
-        this.openProjects([["x_project_status", "=", "cancelled"], ["x_project_type", "=", "client"]], "Cancelled Projects");
+        this.openProjects([["x_project_status", "=", "cancelled"], ["x_project_type", "=", this.state.projectType]], "Cancelled Projects");
     }
 
     onKpiTotalTasksClick() {
-        this.openTasks([["project_id", "!=", false], ["project_id.x_project_type", "=", "client"]], "All Tasks");
+        this.openTasks([["project_id", "!=", false], ["project_id.x_project_type", "=", this.state.projectType]], "All Tasks");
     }
 
     onKpiOverdueTasksClick() {
-        this.openTasks([["x_is_overdue", "=", true], ["project_id.x_project_type", "=", "client"]], "Overdue Tasks");
+        this.openTasks([["x_is_overdue", "=", true], ["project_id.x_project_type", "=", this.state.projectType]], "Overdue Tasks");
     }
 
     onTopProjectClick(projectId) {
@@ -146,7 +154,7 @@ export class ProjectDashboard extends Component {
             type: "ir.actions.client",
             tag: "project_detail_dashboard_v19c",
             name: "Project Dashboard",
-            params: { project_id: projectId },
+            params: { project_id: projectId, projectType: this.state.projectType },
         });
     }
 
@@ -155,6 +163,7 @@ export class ProjectDashboard extends Component {
             type: "ir.actions.client",
             tag: "project_detail_dashboard_v19c",
             name: "Detailed Dashboard",
+            params: { projectType: this.state.projectType },
         });
     }
 
@@ -185,7 +194,7 @@ export class ProjectDashboard extends Component {
                     "Content-Type": "application/json",
                     "X-Csrf-Token": odoo.csrf_token,
                 },
-                body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: {} }),
+                body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: { project_type: this.state.projectType } }),
             });
             const result = await response.json();
             if (result.error) {
@@ -388,6 +397,7 @@ export class ProjectDetailDashboard extends Component {
             error: null,
             projectsList: [],
             selectedProjectId: this.props.action.params?.project_id || this.props.action.context?.project_id || null,
+            projectType: this.props.action.params?.projectType || 'client',
         });
         this.chartTasksStatusRef = useRef("chartTasksStatus");
         this.chartTasksConsultantRef = useRef("chartTasksConsultant");
@@ -405,13 +415,13 @@ export class ProjectDetailDashboard extends Component {
 
     async loadProjectsList() {
         try {
-            const response = await fetch("/project_dashboard_v19c/client_projects_list", {
+            const response = await fetch("/project_dashboard_v19c/projects_list", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                     "X-Csrf-Token": odoo.csrf_token,
                 },
-                body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: {} }),
+                body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: { project_type: this.state.projectType } }),
             });
             const result = await response.json();
             if (result.error) {
@@ -458,6 +468,109 @@ export class ProjectDetailDashboard extends Component {
         const newProjectId = parseInt(ev.target.value, 10);
         this.state.selectedProjectId = newProjectId;
         this.loadProjectDetail(newProjectId);
+    }
+
+    setProjectType(type) {
+        if (this.state.projectType !== type) {
+            this.state.projectType = type;
+            this.state.selectedProjectId = null;
+            this.state.data = null;
+            this.loadProjectsList();
+        }
+    }
+
+    async onToggleMilestone(milestoneId) {
+        try {
+            const response = await fetch("/project_dashboard_v19c/toggle_milestone_reached", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-Csrf-Token": odoo.csrf_token,
+                },
+                body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: { milestone_id: milestoneId } }),
+            });
+            const result = await response.json();
+            if (result.result && result.result.success) {
+                // Reload project details to reflect updated sign-off & progress
+                await this.loadProjectDetail(this.state.selectedProjectId);
+            }
+        } catch (e) {
+            console.error("[Dashboard] Toggle milestone error:", e);
+        }
+    }
+
+    async onToggleClientAction(actionId) {
+        try {
+            const response = await fetch("/project_dashboard_v19c/toggle_client_action", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-Csrf-Token": odoo.csrf_token,
+                },
+                body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: { action_id: actionId } }),
+            });
+            const result = await response.json();
+            if (result.result && result.result.success) {
+                // Reload project details to update actions list
+                await this.loadProjectDetail(this.state.selectedProjectId);
+            }
+        } catch (e) {
+            console.error("[Dashboard] Toggle client action error:", e);
+        }
+    }
+
+    openTask(taskId) {
+        this.action.doAction({
+            type: "ir.actions.act_window",
+            res_model: "project.task",
+            res_id: taskId,
+            views: [[false, "form"]],
+            target: "current",
+        });
+    }
+
+    openRiskIssue(riskId) {
+        this.action.doAction({
+            type: "ir.actions.act_window",
+            res_model: "project.risk.issue",
+            res_id: riskId,
+            views: [[false, "form"]],
+            target: "new",
+        });
+    }
+
+    onAddRiskIssue() {
+        this.action.doAction({
+            type: "ir.actions.act_window",
+            name: "New Risk / Issue",
+            res_model: "project.risk.issue",
+            views: [[false, "form"]],
+            target: "new",
+            context: {
+                default_project_id: this.state.selectedProjectId,
+            },
+        }, {
+            onClose: () => {
+                this.loadProjectDetail(this.state.selectedProjectId);
+            },
+        });
+    }
+
+    onAddClientAction() {
+        this.action.doAction({
+            type: "ir.actions.act_window",
+            name: "New Client Pending Action",
+            res_model: "project.client.action",
+            views: [[false, "form"]],
+            target: "new",
+            context: {
+                default_project_id: this.state.selectedProjectId,
+            },
+        }, {
+            onClose: () => {
+                this.loadProjectDetail(this.state.selectedProjectId);
+            },
+        });
     }
 
     onBackClick() {
