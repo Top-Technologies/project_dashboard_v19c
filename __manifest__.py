@@ -20,7 +20,7 @@
     """,
     'category': 'Project',
     'author': 'Top Technologies',
-    'depends': ['project', 'mail', 'web'],
+    'depends': ['project', 'mail', 'web', 'hr_timesheet'],
     'data': [
         'security/ir.model.access.csv',
         'security/ir.rule.xml',
