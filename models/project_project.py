@@ -100,11 +100,11 @@ class ProjectProject(models.Model):
         for project in projects:
             if project.x_project_type == 'client':
                 default_milestones = [
-                    {'name': 'Preparation', 'x_phase_sequence': 10},
-                    {'name': 'Blueprint', 'x_phase_sequence': 20},
-                    {'name': 'Realization', 'x_phase_sequence': 30},
-                    {'name': 'Testing', 'x_phase_sequence': 40},
-                    {'name': 'Go-Live', 'x_phase_sequence': 50},
+                    {'name': 'Preparation', 'sequence': 10},
+                    {'name': 'Blueprint', 'sequence': 20},
+                    {'name': 'Realization', 'sequence': 30},
+                    {'name': 'Testing', 'sequence': 40},
+                    {'name': 'Go-Live', 'sequence': 50},
                 ]
                 for ms in default_milestones:
                     ms['project_id'] = project.id
@@ -123,11 +123,11 @@ class ProjectProject(models.Model):
             for project in self:
                 if not self.env['project.milestone'].search_count([('project_id', '=', project.id)]):
                     default_milestones = [
-                        {'name': 'Preparation', 'x_phase_sequence': 10},
-                        {'name': 'Blueprint', 'x_phase_sequence': 20},
-                        {'name': 'Realization', 'x_phase_sequence': 30},
-                        {'name': 'Testing', 'x_phase_sequence': 40},
-                        {'name': 'Go-Live', 'x_phase_sequence': 50},
+                        {'name': 'Preparation', 'sequence': 10},
+                        {'name': 'Blueprint', 'sequence': 20},
+                        {'name': 'Realization', 'sequence': 30},
+                        {'name': 'Testing', 'sequence': 40},
+                        {'name': 'Go-Live', 'sequence': 50},
                     ]
                     for ms in default_milestones:
                         ms['project_id'] = project.id
