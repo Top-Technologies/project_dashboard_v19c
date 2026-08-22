@@ -15,8 +15,8 @@ class ProjectDashboardController(http.Controller):
     @http.route('/project_dashboard_v19c/data', type='jsonrpc', auth='user')
     def get_dashboard_data(self, project_type='client'):
         """Return all data needed for the project dashboard."""
-        if not request.env.user.has_group('base.group_system'):
-            raise AccessError("Only System Administrators can access the project dashboard.")
+        if not request.env.user.has_group('project.group_project_manager'):
+            raise AccessError("Only Project Administrators can access the project dashboard.")
 
         Project = request.env["project.project"].sudo()
         Task = request.env["project.task"].sudo()
@@ -272,8 +272,8 @@ class ProjectDashboardController(http.Controller):
     @http.route('/project_dashboard_v19c/projects_list', type='jsonrpc', auth='user')
     def get_projects_list(self, project_type='client'):
         """Return list of projects for the project selector."""
-        if not request.env.user.has_group('base.group_system'):
-            raise AccessError("Only System Administrators can access the project dashboard.")
+        if not request.env.user.has_group('project.group_project_manager'):
+            raise AccessError("Only Project Administrators can access the project dashboard.")
         
         Project = request.env['project.project'].sudo()
         projects = Project.search([('x_project_type', '=', project_type)], order='name asc')
@@ -289,8 +289,8 @@ class ProjectDashboardController(http.Controller):
     @http.route('/project_dashboard_v19c/project_detail', type='jsonrpc', auth='user')
     def get_project_detail(self, project_id):
         """Return detailed dashboard data for a single project."""
-        if not request.env.user.has_group('base.group_system'):
-            raise AccessError("Only System Administrators can access the project dashboard.")
+        if not request.env.user.has_group('project.group_project_manager'):
+            raise AccessError("Only Project Administrators can access the project dashboard.")
         
         Project = request.env['project.project'].sudo()
         Task = request.env['project.task'].sudo()
@@ -604,8 +604,8 @@ class ProjectDashboardController(http.Controller):
     @http.route('/project_dashboard_v19c/toggle_milestone_reached', type='jsonrpc', auth='user')
     def toggle_milestone_reached(self, milestone_id):
         """Toggle is_reached on a project.milestone."""
-        if not request.env.user.has_group('base.group_user'):
-            raise AccessError("Access denied.")
+        if not request.env.user.has_group('project.group_project_manager'):
+            raise AccessError("Access denied. Only Project Administrators can modify milestones.")
         milestone = request.env['project.milestone'].browse(milestone_id)
         if milestone.exists():
             milestone.write({'is_reached': not milestone.is_reached})
@@ -615,8 +615,8 @@ class ProjectDashboardController(http.Controller):
     @http.route('/project_dashboard_v19c/toggle_client_action', type='jsonrpc', auth='user')
     def toggle_client_action(self, action_id):
         """Toggle is_done on a project.client.action."""
-        if not request.env.user.has_group('base.group_user'):
-            raise AccessError("Access denied.")
+        if not request.env.user.has_group('project.group_project_manager'):
+            raise AccessError("Access denied. Only Project Administrators can modify client actions.")
         ca = request.env['project.client.action'].browse(action_id)
         if ca.exists():
             new_val = not ca.is_done
