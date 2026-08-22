@@ -30,6 +30,7 @@
         'views/project_task_views.xml',
         'views/project_dashboard_views.xml',
         'views/menus.xml',
+        'views/project_milestone_views.xml',
     ],
     'assets': {
         'web.assets_backend': [
