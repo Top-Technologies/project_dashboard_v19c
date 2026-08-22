@@ -310,10 +310,9 @@ class ProjectDashboardController(http.Controller):
         total_tasks = len(all_tasks)
         done_tasks = len(all_tasks.filtered(is_task_done))
         
-        # Milestones data
         milestones = Milestone.search(
             [('project_id', '=', project_id)],
-            order='x_phase_sequence asc, deadline asc, name asc'
+            order='sequence asc, deadline asc, name asc'
         )
         milestones_data = []
         overall_progress_sum = 0
@@ -352,7 +351,7 @@ class ProjectDashboardController(http.Controller):
             milestones_data.append({
                 'id': ms.id,
                 'name': ms.name,
-                'sequence': ms.x_phase_sequence,
+                'sequence': ms.sequence,
                 'deadline': ms.deadline.strftime('%b %d, %Y') if ms.deadline else '',
                 'is_reached': is_reached,
                 'acceptance_status': acceptance_status,
