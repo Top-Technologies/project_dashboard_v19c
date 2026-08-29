@@ -22,6 +22,7 @@
     'author': 'Top Technologies',
     'depends': ['project', 'mail', 'web', 'hr_timesheet'],
     'data': [
+        'security/security.xml',
         'security/ir.model.access.csv',
         'security/ir.rule.xml',
         'data/project_task_type_data.xml',

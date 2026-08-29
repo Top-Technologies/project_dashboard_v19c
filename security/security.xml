@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+        <!-- Make Project User imply Timesheet User so they can see and edit timesheets and allocated hours -->
+        <record id="project.group_project_user" model="res.groups">
+            <field name="implied_ids" eval="[(4, ref('hr_timesheet.group_hr_timesheet_user'))]"/>
+        </record>
+    </data>
+</odoo>
