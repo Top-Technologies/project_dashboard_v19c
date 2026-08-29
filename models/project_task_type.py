@@ -21,16 +21,7 @@ class ProjectTaskType(models.Model):
                     "Task stages are managed by the system administrator. "
                     "You cannot create custom stages."
                 )
-            for vals in vals_list:
-                name = vals.get('name')
-                if name in RESERVED_STAGE_NAMES:
-                    if self.search_count([('name', '=', name)]) > 0:
-                        raise UserError(
-                            "A stage named '%s' already exists and is managed by "
-                            "the system. Creating another stage with this exact "
-                            "name is not allowed, as it would create duplicate "
-                            "stages on new projects." % name
-                        )
+
         return super().create(vals_list)
 
     def write(self, vals):
