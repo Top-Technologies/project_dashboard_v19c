@@ -979,3 +979,18 @@
     color: #475569;
     font-weight: 500;
 }
+/* ── Closed Risk / Issue ── */
+.ppd_risk_closed {
+    opacity: 0.55;
+}
+
+.ppd_risk_closed .ppd_risk_name {
+    color: #6b7280;
+    text-decoration: line-through;
+    text-decoration-thickness: 1.5px;
+}
+
+.ppd_risk_closed .ppd_type_badge,
+.ppd_risk_closed .ppd_sev_pill {
+    opacity: 0.65;
+}

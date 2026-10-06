@@ -31,6 +31,8 @@
                                    decoration-success="status in ('mitigated', 'closed')"/>
                             <field name="assigned_user_id"/>
                             <field name="target_date"/>
+                            <field name="submitted_date"/>
+                            <field name="closed_date"/>
                             <field name="mitigation_plan"/>
                         </list>
                     </field>

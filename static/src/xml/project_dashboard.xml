@@ -702,13 +702,17 @@ d</td>
                                         <td colspan="2" class="pd_empty">No active risks or issues 🎉</td>
                                     </tr>
                                 </t>
-                                <t t-foreach="state.data.risks_and_issues" t-as="ri" t-key="ri.id">
-                                    <tr class="pd_row_clickable" t-on-click="() => this.openRiskIssue(ri.id)">
+                                
+                                    <t t-foreach="state.data.risks_and_issues" t-as="ri" t-key="ri.id">
+                                        <tr t-att-class="'pd_row_clickable' + (ri.status === 'closed' ? ' ppd_risk_closed' : '')"
+                                            t-on-click="() => this.openRiskIssue(ri.id)">
                                         <td>
                                             <div class="ppd_risk_name"><t t-esc="ri.name"/></div>
                                             <small class="text-muted">
                                                 <span t-att-class="'ppd_type_badge ppd_type_' + ri.type"><t t-esc="ri.type"/></span>
                                                 <t t-if="ri.assigned_to"> • <t t-esc="ri.assigned_to"/></t>
+                                                <t t-if="ri.submitted_date"> • Submitted: <t t-esc="ri.submitted_date"/></t>
+    <t t-if="ri.closed_date"> • Closed:         <t t-esc="ri.closed_date"/></t>
                                             </small>
                                         </td>
                                         <td>

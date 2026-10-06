@@ -456,6 +456,8 @@ class ProjectDashboardController(http.Controller):
                 'status': ri.status,
                 'assigned_to': ri.assigned_user_id.name if ri.assigned_user_id else '',
                 'target_date': ri.target_date.strftime('%b %d') if ri.target_date else '',
+                'submitted_date': ri.submitted_date.strftime('%b %d, %Y') if ri.submitted_date else '',
+                'closed_date': ri.closed_date.strftime('%b %d, %Y') if ri.closed_date else '',
             })
 
         # Project info
