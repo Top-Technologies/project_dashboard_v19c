@@ -1,5 +1,16 @@
 from odoo import models, fields, api
 
+INTERNAL_SDLC_STAGES = (
+    ('Planning', 1, False),
+    ('Requirement Analysis', 2, False),
+    ('In Development', 3, False),
+    ('Testing & Review', 4, False),
+    ('Rework', 5, False),
+    ('Implemented', 6, True),
+    ('On Hold', 7, False),
+    ('Cancelled', 8, True),
+)
+
 
 class ProjectProject(models.Model):
     _inherit = 'project.project'
@@ -72,9 +83,7 @@ class ProjectProject(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        # Inject the 4 fixed task stages into each vals dict BEFORE super().create()
-        # so the new project already has type_ids set when the form first renders —
-        # this prevents Odoo's "please add stages" prompt on the tasks kanban.
+        # Client projects keep the existing four standard task stages.
         fixed_stage_xmlids = [
             'project_dashboard_v19c.project_stage_new',
             'project_dashboard_v19c.project_stage_in_progress',
@@ -89,12 +98,17 @@ class ProjectProject(models.Model):
         if fixed_stage_ids:
             stage_cmd = [(6, 0, fixed_stage_ids)]
             for vals in vals_list:
-                if not vals.get('type_ids'):
+                project_type = vals.get('x_project_type', self.env.context.get('default_x_project_type', 'client'))
+                if project_type == 'client' and not vals.get('type_ids'):
                     vals['type_ids'] = stage_cmd
-                if vals.get('x_project_type', 'client') == 'client':
+                if project_type == 'client':
                     vals['allow_milestones'] = True
         
         projects = super().create(vals_list)
+
+        # Give every internal project its own SDLC task stages so its phases
+        # are available immediately and remain isolated from client projects.
+        projects.filtered(lambda project: project.x_project_type == 'internal')._ensure_internal_sdlc_stages()
         
         milestones_to_create = []
         for project in projects:
@@ -117,6 +131,8 @@ class ProjectProject(models.Model):
 
     def write(self, vals):
         res = super().write(vals)
+        if vals.get('x_project_type') == 'internal':
+            self._ensure_internal_sdlc_stages()
         if vals.get('x_project_type') == 'client':
             # Create milestones if not already present
             milestones_to_create = []
@@ -136,11 +152,60 @@ class ProjectProject(models.Model):
                 self.env['project.milestone'].create(milestones_to_create)
         return res
 
+    def _ensure_internal_sdlc_stages(self):
+        Stage = self.env['project.task.type'].sudo()
+        stage_names = [name for name, _sequence, _fold in INTERNAL_SDLC_STAGES]
+        for project in self.filtered(lambda record: record.x_project_type == 'internal'):
+            linked_stages = Stage.search([
+                ('project_ids', '=', project.id),
+                ('name', 'in', stage_names),
+            ])
+            # Reuse only stages dedicated to this project. Shared standard
+            # stages such as New/Done must not leak between client projects.
+            linked_stages = linked_stages.filtered(lambda stage: stage.project_ids.ids == [project.id])
+            stages_by_name = {stage.name: stage for stage in linked_stages}
+            stages = Stage.browse()
+            for name, sequence, fold in INTERNAL_SDLC_STAGES:
+                stage = stages_by_name.get(name)
+                if not stage:
+                    stage = Stage.create({
+                        'name': name,
+                        'sequence': sequence,
+                        'fold': fold,
+                        'user_id': False,
+                        'project_ids': [(6, 0, [project.id])],
+                    })
+                stages |= stage
+
+            # Earlier versions exposed generic New and Done phases. Move
+            # those tasks to their SDLC equivalents before hiding the old
+            # stages from this project's status bar.
+            legacy_stages = Stage.search([
+                ('user_id', '=', False),
+                ('name', 'in', ['New', 'Done']),
+            ])
+            if legacy_stages:
+                Task = self.env['project.task'].sudo().with_context(active_test=False)
+                project_tasks = Task.search([
+                    '&', '|',
+                    ('project_id', '=', project.id),
+                    ('parent_id.project_id', '=', project.id),
+                    ('stage_id', 'in', legacy_stages.ids),
+                ])
+                stage_by_name = {stage.name.strip().lower(): stage for stage in stages}
+                for legacy in legacy_stages:
+                    target_name = 'Planning' if legacy.name.strip().lower() == 'new' else 'Implemented'
+                    target = stage_by_name.get(target_name.lower())
+                    if target:
+                        project_tasks.filtered(lambda task: task.stage_id == legacy).write({'stage_id': target.id})
+
+            project.sudo().write({'type_ids': [(6, 0, stages.ids)]})
+
 
     def _sync_project_status(self):
         """Auto-update x_project_status based on task completion.
 
-        Rules (only for client projects, never touches Cancelled):
+        Rules (never touches Cancelled):
         - No tasks at all          → 'new'
         - Some tasks, none Done    → 'in_progress'
         - Some tasks, some Done    → 'in_progress'
@@ -162,6 +227,29 @@ class ProjectProject(models.Model):
                 # No tasks yet — keep/set to New
                 if project.x_project_status != 'new':
                     project.write({'x_project_status': 'new'})
+                continue
+
+            if project.x_project_type == 'internal':
+                stage_names = [(task.stage_id.name or 'New').strip().lower() for task in tasks]
+                all_cancelled = all(name in ('cancelled', 'canceled') for name in stage_names)
+                all_on_hold = all(name in ('on hold', 'on-hold') for name in stage_names)
+                all_new = all(name in ('new', 'planning') for name in stage_names)
+                terminal = [
+                    name in ('done', 'implemented', 'cancelled', 'canceled') or task.is_closed
+                    for task, name in zip(tasks, stage_names)
+                ]
+                if all_cancelled:
+                    new_status = 'cancelled'
+                elif all(terminal):
+                    new_status = 'done'
+                elif all_on_hold:
+                    new_status = 'on_hold'
+                elif all_new:
+                    new_status = 'new'
+                else:
+                    new_status = 'in_progress'
+                if project.x_project_status != new_status:
+                    project.write({'x_project_status': new_status})
                 continue
 
             terminal_stages = {'Done', 'Cancelled'}

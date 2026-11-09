@@ -1,14 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <templates xml:space="preserve">
 
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <!-- MAIN PROJECT DASHBOARD                                             -->
+    <!-- ══════════════════════════════════════════════════════════════════ -->
     <t t-name="project_dashboard_v19c.ProjectDashboard">
         <div class="o_project_dashboard">
 
             <div class="pd_header">
                 <div class="pd_header_left">
-                    <h2>Project Dashboard</h2>
-                    <span class="pd_subtitle">Real-time overview of projects and tasks</span>
-                    <div class="btn-group mt-2 ms-3" role="group">
+                    <div class="d-flex align-items-center">
+                        <div class="pd_header_icon me-3">
+                            <i class="fa fa-briefcase"/>
+                        </div>
+                        <div>
+                            <h2>Project Dashboard</h2>
+                        </div>
+                    </div>
+                    <div class="btn-group mt-2 ms-md-4 pd_type_toggle" role="group">
                         <button type="button" 
                                 t-att-class="'btn btn-sm ' + (state.projectType === 'client' ? 'btn-primary' : 'btn-outline-primary')"
                                 t-on-click="() => this.setProjectType('client')">Client Projects</button>
@@ -18,12 +27,17 @@
                     </div>
                 </div>
                 <div class="pd_header_right">
-                    <button class="btn btn-secondary btn-sm me-2" t-on-click="onDetailedDashboardClick">
+                    <select t-if="state.projectType === 'internal'" class="form-select form-select-sm d-inline-block me-2 pd_header_select" t-att-value="state.dateFilter" t-on-change="onDateFilterChange" aria-label="Filter internal dashboard by date">
+                        <option value="month">This Month</option>
+                        <option value="day">Today</option>
+                        <option value="year">This Year</option>
+                        <option value="all">All Time</option>
+                    </select>
+                    <button class="btn btn-secondary btn-sm me-2 pd_btn_secondary" t-on-click="onDetailedDashboardClick">
                         <i class="fa fa-bar-chart me-1"/> Detailed Dashboard
                     </button>
-                    <button class="btn btn-primary btn-sm" t-on-click="loadData">
-                        <i class="fa fa-refresh me-1"/>
-                        Refresh
+                    <button class="btn btn-primary btn-sm pd_btn_primary" t-on-click="loadData">
+                        <i class="fa fa-refresh me-1"/> Refresh
                     </button>
                 </div>
             </div>
@@ -41,12 +55,9 @@
                 <div class="pd_empty_state">
                     <i class="fa fa-exclamation-triangle fa-3x text-danger mb-3"/>
                     <h4>Could not load dashboard</h4>
-                    <p class="text-muted">
-                        <t t-esc="state.error"/>
-                    </p>
+                    <p class="text-muted"><t t-esc="state.error"/></p>
                     <button class="btn btn-primary mt-2" t-on-click="loadData">
-                        <i class="fa fa-refresh me-1"/>
-                        Try Again
+                        <i class="fa fa-refresh me-1"/> Try Again
                     </button>
                 </div>
             </t>
@@ -55,334 +66,764 @@
             <t t-elif="state.data and state.data.kpis.total_projects === 0">
                 <div class="pd_empty_state">
                     <i class="fa fa-folder-open fa-4x text-muted mb-3"/>
-                    <h4>No projects yet</h4>
-                    <p class="text-muted">Create your first project to see the dashboard come to life.</p>
+                    <h4>No projects found</h4>
+                    <p class="text-muted">No projects found for the selected filter.</p>
                     <a class="btn btn-primary mt-2" href="/odoo/project/new">
-                        <i class="fa fa-plus me-1"/>
-                        New Project
+                        <i class="fa fa-plus me-1"/> New Project
                     </a>
                 </div>
             </t>
 
             <t t-elif="state.data">
 
-                <!-- ── KPI Cards ── -->
-                <div class="pd_kpi_row">
-                    <div class="pd_kpi_card pd_kpi_clickable" t-on-click="onKpiTotalProjectsClick">
-                        <div class="pd_kpi_label">Total Projects</div>
-                        <div class="pd_kpi_value">
-                            <t t-esc="state.data.kpis.total_projects"/>
+                <!-- ════════════════════════════════════════════════════════ -->
+                <!-- CLIENT DASHBOARD (PRESERVED 100% UNTOUCHED)              -->
+                <!-- ════════════════════════════════════════════════════════ -->
+                <t t-if="state.projectType === 'client'">
+                    <!-- ── KPI Cards ── -->
+                    <div class="pd_kpi_row">
+                        <div class="pd_kpi_card pd_kpi_clickable" t-on-click="onKpiTotalProjectsClick">
+                            <div class="pd_kpi_label">Total Projects</div>
+                            <div class="pd_kpi_value"><t t-esc="state.data.kpis.total_projects"/></div>
+                            <i class="fa fa-folder-open pd_kpi_icon text-primary"/>
                         </div>
-                        <i class="fa fa-folder-open pd_kpi_icon text-primary"/>
-                    </div>
-                    <div class="pd_kpi_card pd_kpi_clickable" t-on-click="onKpiActiveProjectsClick">
-                        <div class="pd_kpi_label">Active Projects</div>
-                        <div class="pd_kpi_value text-warning">
-                            <t t-esc="state.data.kpis.active_projects"/>
+                        <div class="pd_kpi_card pd_kpi_clickable" t-on-click="onKpiActiveProjectsClick">
+                            <div class="pd_kpi_label">Active Projects</div>
+                            <div class="pd_kpi_value text-warning"><t t-esc="state.data.kpis.active_projects"/></div>
+                            <i class="fa fa-play-circle pd_kpi_icon text-warning"/>
                         </div>
-                        <i class="fa fa-play-circle pd_kpi_icon text-warning"/>
-                    </div>
-                    <div class="pd_kpi_card pd_kpi_clickable" t-on-click="onKpiOnHoldProjectsClick">
-                        <div class="pd_kpi_label">On Hold Projects</div>
-                        <div class="pd_kpi_value text-secondary">
-                            <t t-esc="state.data.kpis.on_hold_projects"/>
+                        <div class="pd_kpi_card pd_kpi_clickable" t-on-click="onKpiOnHoldProjectsClick">
+                            <div class="pd_kpi_label">On Hold Projects</div>
+                            <div class="pd_kpi_value text-secondary"><t t-esc="state.data.kpis.on_hold_projects"/></div>
+                            <i class="fa fa-pause-circle pd_kpi_icon text-secondary"/>
                         </div>
-                        <i class="fa fa-pause-circle pd_kpi_icon text-secondary"/>
-                    </div>
-                    <div class="pd_kpi_card pd_kpi_clickable" t-on-click="onKpiCompletedProjectsClick">
-                        <div class="pd_kpi_label">Completed Projects</div>
-                        <div class="pd_kpi_value text-success">
-                            <t t-esc="state.data.kpis.completed_projects"/>
+                        <div class="pd_kpi_card pd_kpi_clickable" t-on-click="onKpiCompletedProjectsClick">
+                            <div class="pd_kpi_label">Completed Projects</div>
+                            <div class="pd_kpi_value text-success"><t t-esc="state.data.kpis.completed_projects"/></div>
+                            <i class="fa fa-check-circle pd_kpi_icon text-success"/>
                         </div>
-                        <i class="fa fa-check-circle pd_kpi_icon text-success"/>
-                    </div>
-                    <div class="pd_kpi_card pd_kpi_danger pd_kpi_clickable" t-on-click="onKpiCancelledProjectsClick">
-                        <div class="pd_kpi_label">Cancelled Projects</div>
-                        <div class="pd_kpi_value text-danger">
-                            <t t-esc="state.data.kpis.cancelled_projects"/>
+                        <div class="pd_kpi_card pd_kpi_danger pd_kpi_clickable" t-on-click="onKpiCancelledProjectsClick">
+                            <div class="pd_kpi_label">Cancelled Projects</div>
+                            <div class="pd_kpi_value text-danger"><t t-esc="state.data.kpis.cancelled_projects"/></div>
+                            <i class="fa fa-ban pd_kpi_icon text-danger"/>
                         </div>
-                        <i class="fa fa-ban pd_kpi_icon text-danger"/>
-                    </div>
-                    <div class="pd_kpi_card pd_kpi_clickable" t-on-click="onKpiTotalTasksClick">
-                        <div class="pd_kpi_label">Total Tasks</div>
-                        <div class="pd_kpi_value">
-                            <t t-esc="state.data.kpis.total_tasks"/>
+                        <div class="pd_kpi_card pd_kpi_clickable" t-on-click="onKpiTotalTasksClick">
+                            <div class="pd_kpi_label">Total Tasks</div>
+                            <div class="pd_kpi_value"><t t-esc="state.data.kpis.total_tasks"/></div>
+                            <i class="fa fa-tasks pd_kpi_icon text-info"/>
                         </div>
-                        <i class="fa fa-tasks pd_kpi_icon text-info"/>
-                    </div>
-                    <div class="pd_kpi_card pd_kpi_danger pd_kpi_clickable" t-on-click="onKpiOverdueTasksClick">
-                        <div class="pd_kpi_label">Overdue Tasks</div>
-                        <div class="pd_kpi_value text-danger">
-                            <t t-esc="state.data.kpis.overdue_tasks"/>
+                        <div class="pd_kpi_card pd_kpi_danger pd_kpi_clickable" t-on-click="onKpiOverdueTasksClick">
+                            <div class="pd_kpi_label">Overdue Tasks</div>
+                            <div class="pd_kpi_value text-danger"><t t-esc="state.data.kpis.overdue_tasks"/></div>
+                            <i class="fa fa-clock-o pd_kpi_icon text-danger"/>
                         </div>
-                        <i class="fa fa-clock-o pd_kpi_icon text-danger"/>
                     </div>
-                </div>
 
-                <!-- ── Charts Row ── -->
-                <div class="pd_charts_row">
-                    <div class="pd_chart_card">
-                        <div class="pd_card_title">Projects by Status</div>
-                        <div class="pd_chart_container">
-                            <canvas t-ref="chartProjectStatus" class="pd_canvas"/>
+                    <!-- ── Charts Row ── -->
+                    <div class="pd_charts_row">
+                        <div class="pd_chart_card">
+                            <div class="pd_card_title">Projects by Status</div>
+                            <div class="pd_chart_container">
+                                <canvas t-ref="chartProjectStatus" class="pd_canvas"/>
+                            </div>
+                            <div class="pd_chart_hint">Click a section to view those projects</div>
                         </div>
-                        <div class="pd_chart_hint">Click a section to view those projects</div>
-                    </div>
-                    <div class="pd_chart_card">
-                        <div class="pd_card_title">Tasks by Stage</div>
-                        <div class="pd_chart_container">
-                            <canvas t-ref="chartTaskStage" class="pd_canvas"/>
+                        <div class="pd_chart_card">
+                            <div class="pd_card_title">Tasks by Stage</div>
+                            <div class="pd_chart_container"><canvas t-ref="chartTaskStage" class="pd_canvas"/></div>
+                            <div class="pd_chart_hint">Click a section to view those tasks</div>
                         </div>
-                        <div class="pd_chart_hint">Click a section to view those tasks</div>
-                    </div>
-                    <div class="pd_chart_card">
-                        <div class="pd_card_title">Project Progress</div>
-                        <div class="pd_chart_container">
-                            <canvas t-ref="chartProgress" class="pd_canvas"/>
+                        <div class="pd_chart_card">
+                            <div class="pd_card_title">Project Progress</div>
+                            <div class="pd_chart_container">
+                                <canvas t-ref="chartProgress" class="pd_canvas"/>
+                            </div>
+                            <div class="pd_chart_hint">Click a bar to view those projects</div>
                         </div>
-                        <div class="pd_chart_hint">Click a bar to view those projects</div>
                     </div>
-                </div>
 
-                <!-- ── Middle Row: Top 5 + Resource Utilization ── -->
-                <div class="pd_mid_row">
-                    <div class="pd_table_card pd_top5">
-                        <div class="pd_card_title">Top 5 Active Projects</div>
-                        <table class="pd_table">
-                            <thead>
-                                <tr>
-                                    <th>Project</th>
-                                    <th>Progress</th>
-                                    <th>Tasks</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <t t-if="state.data.top_projects.length === 0">
+                    <!-- ── Middle Row: Top 5 + Resource Utilization ── -->
+                    <div class="pd_mid_row">
+                        <div class="pd_table_card pd_top5">
+                            <div class="pd_card_title">Top 5 Active Projects</div>
+                            <table class="pd_table">
+                                <thead>
                                     <tr>
-                                        <td colspan="3" class="pd_empty">No active projects</td>
+                                        <th>Project</th>
+                                        <th>Progress</th>
+                                        <th>Tasks</th>
                                     </tr>
-                                </t>
-                                <t t-foreach="state.data.top_projects" t-as="proj" t-key="proj_index">
-                                    <tr class="pd_row_clickable" t-on-click="() => this.onTopProjectClick(proj.id)">
-                                        <td class="pd_project_name">
-                                            <t t-esc="proj.name"/>
-                                        </td>
-                                        <td>
-                                            <div class="pd_progress_wrap">
-                                                <div class="pd_progress_bar">
-                                                    <div class="pd_progress_fill" t-attf-style="width: {{ proj.progress }}%;"/>
+                                </thead>
+                                <tbody>
+                                    <t t-if="state.data.top_projects.length === 0">
+                                        <tr><td colspan="3" class="pd_empty">No active projects</td></tr>
+                                    </t>
+                                    <t t-foreach="state.data.top_projects" t-as="proj" t-key="proj_index">
+                                        <tr class="pd_row_clickable" t-on-click="() => this.onTopProjectClick(proj.id)">
+                                            <td class="pd_project_name"><t t-esc="proj.name"/></td>
+                                            <td>
+                                                <div class="pd_progress_wrap">
+                                                    <div class="pd_progress_bar">
+                                                        <div class="pd_progress_fill" t-attf-style="width: {{ proj.progress }}%;"/>
+                                                    </div>
+                                                    <span class="pd_progress_pct"><t t-esc="proj.progress"/>%</span>
                                                 </div>
-                                                <span class="pd_progress_pct">
-                                                    <t t-esc="proj.progress"/>
-%
-                                                </span>
-                                            </div>
-                                        </td>
-                                        <td class="pd_task_count">
-                                            <t t-esc="proj.done_tasks"/>
-/                                            <t t-esc="proj.total_tasks"/>
-                                        </td>
-                                    </tr>
-                                </t>
-                            </tbody>
-                        </table>
-                    </div>
+                                            </td>
+                                            <td class="pd_task_count"><t t-esc="proj.done_tasks"/>/<t t-esc="proj.total_tasks"/></td>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                            </table>
+                        </div>
 
-                    <div class="pd_table_card pd_resource">
-                        <div class="pd_card_title">Resource Utilization</div>
-                        <table class="pd_table">
-                            <thead>
-                                <tr>
-                                    <th>Assignee</th>
-                                    <th>Utilization</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <t t-if="state.data.resource_utilization.length === 0">
+                        <div class="pd_table_card pd_resource">
+                            <div class="pd_card_title">Resource Utilization</div>
+                            <table class="pd_table">
+                                <thead>
                                     <tr>
-                                        <td colspan="2" class="pd_empty">No data</td>
+                                        <th>Assignee</th>
+                                        <th>Utilization</th>
                                     </tr>
-                                </t>
-                                <t t-foreach="state.data.resource_utilization" t-as="res" t-key="res_index">
-                                    <tr class="pd_row_clickable" t-on-click="() => this.onResourceUtilizationClick(res.user_id, res.name)">
-                                        <td>
-                                            <t t-esc="res.name"/>
-                                        </td>
-                                        <td>
-                                            <div class="pd_progress_wrap">
-                                                <div class="pd_progress_bar">
-                                                    <div t-attf-class="pd_progress_fill {{ res.utilization >= 90 ? 'pd_fill_danger' : res.utilization >= 70 ? 'pd_fill_warning' : '' }}" t-attf-style="width: {{ res.utilization }}%;"/>
+                                </thead>
+                                <tbody>
+                                    <t t-if="state.data.resource_utilization.length === 0">
+                                        <tr><td colspan="2" class="pd_empty">No data</td></tr>
+                                    </t>
+                                    <t t-foreach="state.data.resource_utilization || []" t-as="res" t-key="res_index">
+                                        <tr class="pd_row_clickable" t-on-click="() => this.onResourceUtilizationClick(res.user_id, res.name)">
+                                            <td><t t-esc="res.name"/></td>
+                                            <td>
+                                                <div class="pd_progress_wrap">
+                                                    <div class="pd_progress_bar">
+                                                        <div t-attf-class="pd_progress_fill {{ res.utilization >= 90 ? 'pd_fill_danger' : res.utilization >= 70 ? 'pd_fill_warning' : '' }}" t-attf-style="width: {{ res.utilization }}%;"/>
+                                                    </div>
+                                                    <span class="pd_progress_pct"><t t-esc="res.utilization"/>%</span>
                                                 </div>
-                                                <span class="pd_progress_pct">
-                                                    <t t-esc="res.utilization"/>
-%
-                                                </span>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                </t>
-                            </tbody>
-                        </table>
+                                            </td>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
-                </div>
 
-                <!-- ── Bottom Row ── -->
-                <div class="pd_bottom_row">
+                    <!-- ── Bottom Row ── -->
+                    <div class="pd_bottom_row">
+                        <div class="pd_table_card">
+                            <div class="pd_card_title">Recently Created Tasks</div>
+                            <span class="pd_card_subtitle">Last 3 days</span>
+                            <div class="pd_activity_scroll">
+                                <t t-if="state.data.recent_activities.length === 0">
+                                    <div class="pd_empty">No tasks created in the last 3 days</div>
+                                </t>
+                                <t t-foreach="state.data.recent_activities || []" t-as="act" t-key="act_index">
+                                    <div class="pd_activity_row pd_row_clickable" t-on-click="() => this.onRecentTaskClick(act.id)">
+                                        <div class="pd_activity_avatar"><t t-esc="act.name[0]"/></div>
+                                        <div class="pd_activity_body">
+                                            <strong><t t-esc="act.name"/></strong>
+                                            <span t-att-class="'pd_stage_badge ' + (act.stage === 'New' ? 'pd_stage_new' : act.stage === 'In Progress' ? 'pd_stage_inprogress' : act.stage === 'Done' ? 'pd_stage_done' : act.stage === 'Cancelled' ? 'pd_stage_cancelled' : 'pd_stage_unknown')">
+                                                <t t-esc="act.stage"/>
+                                            </span>
+                                            <br/>
+                                            <small class="text-muted"><t t-esc="act.project"/> • <t t-esc="act.assignees"/></small>
+                                            <span class="pd_activity_date"><t t-esc="act.created"/></span>
+                                        </div>
+                                    </div>
+                                </t>
+                            </div>
+                        </div>
 
-                    <div class="pd_table_card">
-                        <div class="pd_card_title">Recently Created Tasks</div>
-                        <span class="pd_card_subtitle">Last 3 days</span>
-                        <div class="pd_activity_scroll">
-                            <t t-if="state.data.recent_activities.length === 0">
-                                <div class="pd_empty">No tasks created in the last 3 days</div>
+                        <div class="pd_table_card">
+                            <div class="pd_card_title">Upcoming Deadlines</div>
+                            <table class="pd_table">
+                                <thead>
+                                    <tr><th>Task</th><th>Deadline</th><th>Days Left</th></tr>
+                                </thead>
+                                <tbody>
+                                    <t t-if="state.data.upcoming_deadlines.length === 0">
+                                        <tr><td colspan="3" class="pd_empty">No upcoming deadlines</td></tr>
+                                    </t>
+                                    <t t-foreach="state.data.upcoming_deadlines || []" t-as="d" t-key="d_index">
+                                        <tr class="pd_row_clickable" t-on-click="() => this.onUpcomingDeadlineClick(d.id)">
+                                            <td><t t-esc="d.name"/><br/><small class="text-muted"><t t-esc="d.project"/></small></td>
+                                            <td><t t-esc="d.deadline"/></td>
+                                            <td t-att-class="d.days_left &lt;= 3 ? 'text-danger fw-bold' : d.days_left &lt;= 7 ? 'text-warning fw-bold' : 'text-success'">
+                                                <t t-esc="d.days_left"/> days
+                                            </td>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="pd_table_card">
+                            <div class="pd_card_title">Overdue Tasks</div>
+                            <table class="pd_table">
+                                <thead>
+                                    <tr><th>Task</th><th>Project</th><th>Overdue By</th></tr>
+                                </thead>
+                                <tbody>
+                                    <t t-if="state.data.overdue_task_data.length === 0">
+                                        <tr><td colspan="3" class="pd_empty">No overdue tasks 🎉</td></tr>
+                                    </t>
+                                    <t t-foreach="state.data.overdue_task_data || []" t-as="ot" t-key="ot_index">
+                                        <tr class="pd_row_clickable" t-on-click="() => this.onOverdueTaskClick(ot.id)">
+                                            <td><t t-esc="ot.name"/></td>
+                                            <td class="text-muted"><t t-esc="ot.project"/></td>
+                                            <td class="text-danger fw-bold"><t t-esc="ot.days_overdue"/>d</td>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="pd_table_card pd_alerts_card">
+                            <div class="pd_card_title">Alerts</div>
+                            <t t-if="state.data.alerts.length === 0">
+                                <div class="pd_empty text-success"><i class="fa fa-check-circle"/> All clear!</div>
                             </t>
-                            <t t-foreach="state.data.recent_activities" t-as="act" t-key="act_index">
-                                <div class="pd_activity_row pd_row_clickable" t-on-click="() => this.onRecentTaskClick(act.id)">
-                                    <div class="pd_activity_avatar">
-                                        <t t-esc="act.name[0]"/>
-                                    </div>
-                                    <div class="pd_activity_body">
-                                        <strong>
-                                            <t t-esc="act.name"/>
-                                        </strong>
-                                        <span t-att-class="'pd_stage_badge ' + (act.stage === 'New' ? 'pd_stage_new' : act.stage === 'In Progress' ? 'pd_stage_inprogress' : act.stage === 'Done' ? 'pd_stage_done' : act.stage === 'Cancelled' ? 'pd_stage_cancelled' : 'pd_stage_unknown')">
-                                            <t t-esc="act.stage"/>
-                                        </span>
-                                        <br/>
-                                        <small class="text-muted">
-                                            <t t-esc="act.project"/>
- •                                            <t t-esc="act.assignees"/>
-                                        </small>
-                                        <span class="pd_activity_date">
-                                            <t t-esc="act.created"/>
-                                        </span>
-                                    </div>
+                            <t t-foreach="state.data.alerts || []" t-as="alert" t-key="alert_index">
+                                <div t-att-class="'pd_alert pd_alert_' + alert.level">
+                                    <i t-att-class="alert.level === 'danger' ? 'fa fa-times-circle' : alert.level === 'warning' ? 'fa fa-exclamation-triangle' : 'fa fa-info-circle'"/>
+                                    <span><t t-esc="alert.message"/></span>
                                 </div>
                             </t>
                         </div>
-                    </div>
 
-                    <div class="pd_table_card">
-                        <div class="pd_card_title">Upcoming Deadlines</div>
-                        <table class="pd_table">
-                            <thead>
-                                <tr>
-                                    <th>Task</th>
-                                    <th>Deadline</th>
-                                    <th>Days Left</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <t t-if="state.data.upcoming_deadlines.length === 0">
-                                    <tr>
-                                        <td colspan="3" class="pd_empty">No upcoming deadlines</td>
-                                    </tr>
-                                </t>
-                                <t t-foreach="state.data.upcoming_deadlines" t-as="d" t-key="d_index">
-                                    <tr class="pd_row_clickable" t-on-click="() => this.onUpcomingDeadlineClick(d.id)">
-                                        <td>
-                                            <t t-esc="d.name"/>
-                                            <br/>
-                                            <small class="text-muted">
-                                                <t t-esc="d.project"/>
-                                            </small>
-                                        </td>
-                                        <td>
-                                            <t t-esc="d.deadline"/>
-                                        </td>
-                                        <td t-att-class="d.days_left &lt;= 3 ? 'text-danger fw-bold' : d.days_left &lt;= 7 ? 'text-warning fw-bold' : 'text-success'">
-                                            <t t-esc="d.days_left"/>
- days
-                                        </td>
-                                    </tr>
-                                </t>
-                            </tbody>
-                        </table>
+                        <div class="pd_table_card pd_timesheet_card">
+                            <div class="pd_card_title">Timesheet Summary</div>
+                            <span class="pd_card_subtitle">Active Projects Hours Logged</span>
+                            <table class="pd_table mt-2">
+                                <thead>
+                                    <tr><th>Project</th><th>Total Hours</th></tr>
+                                </thead>
+                                <tbody>
+                                    <t t-if="!state.data.timesheet_summary || state.data.timesheet_summary.length === 0">
+                                        <tr><td colspan="2" class="pd_empty">No timesheet records</td></tr>
+                                    </t>
+                                    <t t-foreach="state.data.timesheet_summary || []" t-as="ts" t-key="ts.project_id">
+                                        <tr class="pd_row_clickable" t-on-click="() => this.openProjectForm(ts.project_id)">
+                                            <td><t t-esc="ts.project_name"/></td>
+                                            <td class="fw-bold"><t t-esc="ts.total_hours"/> h</td>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
+                </t>
 
-                    <div class="pd_table_card">
-                        <div class="pd_card_title">Overdue Tasks</div>
-                        <table class="pd_table">
-                            <thead>
-                                <tr>
-                                    <th>Task</th>
-                                    <th>Project</th>
-                                    <th>Overdue By</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <t t-if="state.data.overdue_task_data.length === 0">
-                                    <tr>
-                                        <td colspan="3" class="pd_empty">No overdue tasks 🎉</td>
-                                    </tr>
-                                </t>
-                                <t t-foreach="state.data.overdue_task_data" t-as="ot" t-key="ot_index">
-                                    <tr class="pd_row_clickable" t-on-click="() => this.onOverdueTaskClick(ot.id)">
-                                        <td>
-                                            <t t-esc="ot.name"/>
-                                        </td>
-                                        <td class="text-muted">
-                                            <t t-esc="ot.project"/>
-                                        </td>
-                                        <td class="text-danger fw-bold">
-                                            <t t-esc="ot.days_overdue"/>
-d</td>
-                                    </tr>
-                                </t>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div class="pd_table_card pd_alerts_card">
-                        <div class="pd_card_title">Alerts</div>
-                        <t t-if="state.data.alerts.length === 0">
-                            <div class="pd_empty text-success">
-                                <i class="fa fa-check-circle"/>
- All clear!</div>
-                        </t>
-                        <t t-foreach="state.data.alerts" t-as="alert" t-key="alert_index">
-                            <div t-att-class="'pd_alert pd_alert_' + alert.level">
-                                <i t-att-class="alert.level === 'danger' ? 'fa fa-times-circle' : alert.level === 'warning' ? 'fa fa-exclamation-triangle' : 'fa fa-info-circle'"/>
-                                <span>
-                                    <t t-esc="alert.message"/>
-                                </span>
+                <!-- ════════════════════════════════════════════════════════ -->
+                <!-- INTERNAL DASHBOARD (LAYOUT OF SCREENSHOT 2)               -->
+                <!-- ════════════════════════════════════════════════════════ -->
+                <t t-else="">
+                    <!-- ── Top KPI Cards (Screenshot 2: 6 cards + Overdue Tasks) ── -->
+                    <div class="pd_internal_kpi_grid">
+                        <!-- 1. Total Projects -->
+                        <div class="pd_kpi_card_v2 pd_kpi_v2_blue pd_row_clickable" t-on-click="onKpiTotalProjectsClick">
+                            <div class="pd_kpi_v2_top">
+                                <div class="pd_kpi_v2_icon"><i class="fa fa-folder-open"/></div>
+                                <div class="pd_kpi_v2_info">
+                                    <span class="pd_kpi_v2_label">Total Projects</span>
+                                    <div class="pd_kpi_v2_value"><t t-esc="state.data.kpis.total_projects"/></div>
+                                </div>
+                                <div t-att-class="'pd_kpi_v2_trend ' + (state.data.kpis.total_projects_trend_class || 'pd_trend_neutral')" t-att-title="state.data.kpis.total_projects_trend_title || 'No period comparison available'">
+                                    <i t-att-class="'fa ' + (state.data.kpis.total_projects_trend_icon || 'fa-arrow-right')"/> <t t-esc="state.data.kpis.total_projects_trend"/>
+                                </div>
                             </div>
-                        </t>
+                            <svg class="pd_kpi_v2_wave" viewBox="0 0 100 24" preserveAspectRatio="none">
+                                <path d="M0,15 C25,5 45,22 70,10 C85,4 92,16 100,8 L100,24 L0,24 Z" fill="rgba(59,130,246,0.12)"/>
+                                <path d="M0,15 C25,5 45,22 70,10 C85,4 92,16 100,8" fill="none" stroke="#3b82f6" stroke-width="2"/>
+                            </svg>
+                        </div>
+
+                        <!-- 2. Active Projects -->
+                        <div class="pd_kpi_card_v2 pd_kpi_v2_green pd_row_clickable" t-on-click="onKpiActiveProjectsClick">
+                            <div class="pd_kpi_v2_top">
+                                <div class="pd_kpi_v2_icon"><i class="fa fa-play"/></div>
+                                <div class="pd_kpi_v2_info">
+                                    <span class="pd_kpi_v2_label">Active Projects</span>
+                                    <div class="pd_kpi_v2_value"><t t-esc="state.data.kpis.active_projects"/></div>
+                                </div>
+                                <div t-att-class="'pd_kpi_v2_trend ' + (state.data.kpis.active_projects_trend_class || 'pd_trend_neutral')" t-att-title="state.data.kpis.active_projects_trend_title || 'No period comparison available'">
+                                    <i t-att-class="'fa ' + (state.data.kpis.active_projects_trend_icon || 'fa-arrow-right')"/> <t t-esc="state.data.kpis.active_projects_trend"/>
+                                </div>
+                            </div>
+                            <svg class="pd_kpi_v2_wave" viewBox="0 0 100 24" preserveAspectRatio="none">
+                                <path d="M0,14 C25,4 45,20 70,8 C85,3 92,14 100,6 L100,24 L0,24 Z" fill="rgba(34,197,94,0.12)"/>
+                                <path d="M0,14 C25,4 45,20 70,8 C85,3 92,14 100,6" fill="none" stroke="#22c55e" stroke-width="2"/>
+                            </svg>
+                        </div>
+
+                        <!-- 3. On Hold Projects -->
+                        <div class="pd_kpi_card_v2 pd_kpi_v2_orange pd_row_clickable" t-on-click="onKpiOnHoldProjectsClick">
+                            <div class="pd_kpi_v2_top">
+                                <div class="pd_kpi_v2_icon"><i class="fa fa-pause"/></div>
+                                <div class="pd_kpi_v2_info">
+                                    <span class="pd_kpi_v2_label">On Hold Projects</span>
+                                    <div class="pd_kpi_v2_value"><t t-esc="state.data.kpis.on_hold_projects"/></div>
+                                </div>
+                                <div t-att-class="'pd_kpi_v2_trend ' + (state.data.kpis.on_hold_projects_trend_class || 'pd_trend_neutral')" t-att-title="state.data.kpis.on_hold_projects_trend_title || 'No period comparison available'">
+                                    <i t-att-class="'fa ' + (state.data.kpis.on_hold_projects_trend_icon || 'fa-arrow-right')"/> <t t-esc="state.data.kpis.on_hold_projects_trend"/>
+                                </div>
+                            </div>
+                            <svg class="pd_kpi_v2_wave" viewBox="0 0 100 24" preserveAspectRatio="none">
+                                <path d="M0,16 C25,12 50,18 75,14 C88,11 95,15 100,12 L100,24 L0,24 Z" fill="rgba(245,158,11,0.12)"/>
+                                <path d="M0,16 C25,12 50,18 75,14 C88,11 95,15 100,12" fill="none" stroke="#f59e0b" stroke-width="2"/>
+                            </svg>
+                        </div>
+
+                        <!-- 4. Completed Projects -->
+                        <div class="pd_kpi_card_v2 pd_kpi_v2_red pd_row_clickable" t-on-click="onKpiCompletedProjectsClick">
+                            <div class="pd_kpi_v2_top">
+                                <div class="pd_kpi_v2_icon"><i class="fa fa-flag"/></div>
+                                <div class="pd_kpi_v2_info">
+                                    <span class="pd_kpi_v2_label">Completed Projects</span>
+                                    <div class="pd_kpi_v2_value"><t t-esc="state.data.kpis.completed_projects"/></div>
+                                </div>
+                                <div t-att-class="'pd_kpi_v2_trend ' + (state.data.kpis.completed_projects_trend_class || 'pd_trend_neutral')" t-att-title="state.data.kpis.completed_projects_trend_title || 'No period comparison available'">
+                                    <i t-att-class="'fa ' + (state.data.kpis.completed_projects_trend_icon || 'fa-arrow-right')"/> <t t-esc="state.data.kpis.completed_projects_trend"/>
+                                </div>
+                            </div>
+                            <svg class="pd_kpi_v2_wave" viewBox="0 0 100 24" preserveAspectRatio="none">
+                                <path d="M0,15 C25,8 50,20 75,12 C88,8 95,14 100,10 L100,24 L0,24 Z" fill="rgba(239,68,68,0.12)"/>
+                                <path d="M0,15 C25,8 50,20 75,12 C88,8 95,14 100,10" fill="none" stroke="#ef4444" stroke-width="2"/>
+                            </svg>
+                        </div>
+
+                        <!-- 5. Cancelled Projects -->
+                        <div class="pd_kpi_card_v2 pd_kpi_v2_teal pd_row_clickable" t-on-click="onKpiCancelledProjectsClick">
+                            <div class="pd_kpi_v2_top">
+                                <div class="pd_kpi_v2_icon"><i class="fa fa-times"/></div>
+                                <div class="pd_kpi_v2_info">
+                                    <span class="pd_kpi_v2_label">Cancelled Projects</span>
+                                    <div class="pd_kpi_v2_value"><t t-esc="state.data.kpis.cancelled_projects"/></div>
+                                </div>
+                                <div t-att-class="'pd_kpi_v2_trend ' + (state.data.kpis.cancelled_projects_trend_class || 'pd_trend_neutral')" t-att-title="state.data.kpis.cancelled_projects_trend_title || 'No period comparison available'">
+                                    <i t-att-class="'fa ' + (state.data.kpis.cancelled_projects_trend_icon || 'fa-arrow-right')"/> <t t-esc="state.data.kpis.cancelled_projects_trend"/>
+                                </div>
+                            </div>
+                            <svg class="pd_kpi_v2_wave" viewBox="0 0 100 24" preserveAspectRatio="none">
+                                <path d="M0,16 C30,10 60,18 80,12 C90,9 96,14 100,12 L100,24 L0,24 Z" fill="rgba(6,182,212,0.12)"/>
+                                <path d="M0,16 C30,10 60,18 80,12 C90,9 96,14 100,12 L100,24 L0,24 Z" fill="none" stroke="#06b6d4" stroke-width="2"/>
+                            </svg>
+                        </div>
+
+                        <!-- 6. Total Tasks -->
+                        <div class="pd_kpi_card_v2 pd_kpi_v2_purple pd_row_clickable" t-on-click="onKpiTotalTasksClick">
+                            <div class="pd_kpi_v2_top">
+                                <div class="pd_kpi_v2_icon"><i class="fa fa-clipboard"/></div>
+                                <div class="pd_kpi_v2_info">
+                                    <span class="pd_kpi_v2_label">Total Tasks</span>
+                                    <div class="pd_kpi_v2_value"><t t-esc="state.data.kpis.total_tasks"/></div>
+                                </div>
+                                <div t-att-class="'pd_kpi_v2_trend ' + (state.data.kpis.total_tasks_trend_class || 'pd_trend_neutral')" t-att-title="state.data.kpis.total_tasks_trend_title || 'No period comparison available'">
+                                    <i t-att-class="'fa ' + (state.data.kpis.total_tasks_trend_icon || 'fa-arrow-right')"/> <t t-esc="state.data.kpis.total_tasks_trend"/>
+                                </div>
+                            </div>
+                            <svg class="pd_kpi_v2_wave" viewBox="0 0 100 24" preserveAspectRatio="none">
+                                <path d="M0,14 C25,5 45,22 70,9 C85,4 92,15 100,7 L100,24 L0,24 Z" fill="rgba(139,92,246,0.12)"/>
+                                <path d="M0,14 C25,5 45,22 70,9 C85,4 92,15 100,7" fill="none" stroke="#8b5cf6" stroke-width="2"/>
+                            </svg>
+                        </div>
+
+                        <!-- 7. Subtasks -->
+                        <div class="pd_kpi_card_v2 pd_kpi_v2_indigo pd_row_clickable" t-on-click="onKpiSubtasksClick">
+                            <div class="pd_kpi_v2_top">
+                                <div class="pd_kpi_v2_icon"><i class="fa fa-sitemap"/></div>
+                                <div class="pd_kpi_v2_info">
+                                    <span class="pd_kpi_v2_label">Subtasks</span>
+                                    <div class="pd_kpi_v2_value"><t t-esc="state.data.kpis.total_subtasks || 0"/></div>
+                                </div>
+                                <div t-att-class="'pd_kpi_v2_trend ' + (state.data.kpis.total_subtasks_trend_class || 'pd_trend_neutral')" t-att-title="state.data.kpis.total_subtasks_trend_title || 'No period comparison available'">
+                                    <i t-att-class="'fa ' + (state.data.kpis.total_subtasks_trend_icon || 'fa-arrow-right')"/> <t t-esc="state.data.kpis.total_subtasks_trend"/>
+                                </div>
+                            </div>
+                            <svg class="pd_kpi_v2_wave" viewBox="0 0 100 24" preserveAspectRatio="none">
+                                <path d="M0,14 C25,5 45,22 70,9 C85,4 92,15 100,7 L100,24 L0,24 Z" fill="rgba(99,102,241,0.12)"/>
+                                <path d="M0,14 C25,5 45,22 70,9 C85,4 92,15 100,7" fill="none" stroke="#6366f1" stroke-width="2"/>
+                            </svg>
+                        </div>
+
+                        <!-- 9. Overdue Tasks -->
+                        <div class="pd_kpi_card_v2 pd_kpi_v2_crimson pd_row_clickable" t-on-click="onKpiOverdueTasksClick">
+                            <div class="pd_kpi_v2_top">
+                                <div class="pd_kpi_v2_icon"><i class="fa fa-clock-o"/></div>
+                                <div class="pd_kpi_v2_info">
+                                    <span class="pd_kpi_v2_label">Overdue Tasks</span>
+                                    <div class="pd_kpi_v2_value text-danger"><t t-esc="state.data.kpis.overdue_tasks"/></div>
+                                </div>
+                                <div t-att-class="'pd_kpi_v2_trend ' + (state.data.kpis.overdue_tasks_trend_class || 'pd_trend_neutral')" t-att-title="state.data.kpis.overdue_tasks_trend_title || 'No period comparison available'">
+                                    <i t-att-class="'fa ' + (state.data.kpis.overdue_tasks_trend_icon || 'fa-arrow-right')"/> <t t-esc="state.data.kpis.overdue_tasks_trend"/>
+                                </div>
+                            </div>
+                            <svg class="pd_kpi_v2_wave" viewBox="0 0 100 24" preserveAspectRatio="none">
+                                <path d="M0,15 C25,6 45,21 70,10 C85,5 92,16 100,9 L100,24 L0,24 Z" fill="rgba(225,29,72,0.12)"/>
+                                <path d="M0,15 C25,6 45,21 70,10 C85,5 92,16 100,9" fill="none" stroke="#e11d48" stroke-width="2"/>
+                            </svg>
+                        </div>
                     </div>
 
-                    <div class="pd_table_card pd_timesheet_card">
-                        <div class="pd_card_title">Timesheet Summary</div>
-                        <span class="pd_card_subtitle">Active Projects Hours Logged</span>
-                        <table class="pd_table mt-2">
-                            <thead>
-                                <tr>
-                                    <th>Project</th>
-                                    <th>Total Hours</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <t t-if="!state.data.timesheet_summary || state.data.timesheet_summary.length === 0">
+                    <!-- ── Middle Row 1: Projects by Status & SDLC Phases / Tasks by Stage (Bar chart removed!) ── -->
+                    <div class="pd_internal_charts_row">
+                        <!-- Projects by Status (Donut) -->
+                        <div class="pd_chart_card_v2">
+                            <div class="pd_chart_header_v2">
+                                <div class="pd_card_title_v2"><i class="fa fa-pie-chart text-primary me-2"/>Projects by Status</div>
+                                <span class="pd_view_link" t-on-click="onKpiTotalProjectsClick">View Details <i class="fa fa-arrow-right ms-1"/></span>
+                            </div>
+                            <div class="pd_donut_wrapper">
+                                <canvas t-ref="chartProjectStatus" class="pd_canvas"/>
+                                <div class="pd_donut_center_text">
+                                    <div class="pd_donut_center_value"><t t-esc="state.data.kpis.total_projects"/></div>
+                                    <div class="pd_donut_center_label">Total</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- SDLC Phases · Tasks by Stage (Donut) -->
+                        <div class="pd_chart_card_v2">
+                            <div class="pd_chart_header_v2">
+                                <div class="pd_card_title_v2"><i class="fa fa-pie-chart text-purple me-2"/>SDLC Phases · Tasks by Stage</div>
+                                <span class="pd_view_link" t-on-click="onKpiTotalTasksClick">View Details <i class="fa fa-arrow-right ms-1"/></span>
+                            </div>
+                            <div class="pd_donut_wrapper">
+                                <canvas t-ref="chartTaskStage" class="pd_canvas"/>
+                                <div class="pd_donut_center_text">
+                                    <div class="pd_donut_center_value"><t t-esc="state.data.sdlc_phases_total_tasks || state.data.kpis.total_tasks"/></div>
+                                    <div class="pd_donut_center_label">Tasks</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ── Middle Row 2: Top 5 Active Projects, Resource Utilization, Daily Tasks ── -->
+                    <div class="pd_internal_mid_grid">
+                        <!-- 1. Top 5 Active Projects (Emoji replaced with icon!) -->
+                        <div class="pd_table_card_v2">
+                            <div class="pd_chart_header_v2">
+                                <div class="pd_card_title_v2"><i class="fa fa-trophy text-warning me-2"/>Top 5 Active Projects</div>
+                                <span class="pd_view_link" t-on-click="onKpiActiveProjectsClick">View All <i class="fa fa-arrow-right ms-1"/></span>
+                            </div>
+                            <table class="pd_table_v2">
+                                <thead>
                                     <tr>
-                                        <td colspan="2" class="pd_empty">No timesheet records</td>
+                                        <th>Project</th>
+                                        <th>Progress</th>
+                                        <th class="text-end">Tasks</th>
                                     </tr>
+                                </thead>
+                                <tbody>
+                                    <t t-if="!state.data.top_projects || state.data.top_projects.length === 0">
+                                        <tr><td colspan="3" class="pd_empty_v2">No active projects found</td></tr>
+                                    </t>
+                                    <t t-foreach="state.data.top_projects" t-as="proj" t-key="proj.id">
+                                        <tr class="pd_row_clickable" t-on-click="() => this.onTopProjectClick(proj.id)">
+                                            <td class="fw-semibold text-dark"><t t-esc="proj.name"/></td>
+                                            <td style="width: 40%;">
+                                                <div class="pd_bar_wrap_v2">
+                                                    <div class="pd_bar_track_v2">
+                                                        <div class="pd_bar_fill_v2 pd_fill_blue" t-att-style="'width: ' + proj.progress + '%'"/>
+                                                    </div>
+                                                    <span class="pd_bar_pct_v2"><t t-esc="proj.progress"/>%</span>
+                                                </div>
+                                            </td>
+                                            <td class="text-end text-muted fw-semibold"><t t-esc="proj.done_tasks"/>/<t t-esc="proj.total_tasks"/></td>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- 2. Resource Utilization (Screenshot 1 style) -->
+                        <div class="pd_table_card_v2">
+                            <div class="pd_chart_header_v2">
+                                <div class="pd_card_title_v2"><i class="fa fa-users text-primary me-2"/>Resource Utilization</div>
+                                <span class="pd_view_link" t-on-click="() => this.openTasks([['project_id.x_project_type','=','internal']], 'Assigned Tasks')">View Details <i class="fa fa-arrow-right ms-1"/></span>
+                            </div>
+                            <div class="pd_util_list">
+                                <t t-if="!state.data.resource_utilization || state.data.resource_utilization.length === 0">
+                                    <div class="pd_empty_v2">No resource data available</div>
                                 </t>
-                                <t t-foreach="state.data.timesheet_summary || []" t-as="ts" t-key="ts.project_id">
-                                    <tr class="pd_row_clickable" t-on-click="() => this.openProjectForm(ts.project_id)">
-                                        <td><t t-esc="ts.project_name"/></td>
-                                        <td class="fw-bold"><t t-esc="ts.total_hours"/> h</td>
-                                    </tr>
+                                <t t-foreach="state.data.resource_utilization || []" t-as="res" t-key="res.name">
+                                    <div class="pd_util_row pd_row_clickable" t-on-click="() => this.onResourceUtilizationClick(res.user_id, res.name)">
+                                        <div class="pd_util_name"><t t-esc="res.name"/></div>
+                                        <div class="pd_bar_wrap_v2 flex-grow-1 mx-2">
+                                            <div class="pd_bar_track_v2">
+                                                <div t-att-class="'pd_bar_fill_v2 ' + (res_index % 5 === 0 ? 'pd_fill_blue' : res_index % 5 === 1 ? 'pd_fill_green' : res_index % 5 === 2 ? 'pd_fill_orange' : res_index % 5 === 3 ? 'pd_fill_purple' : 'pd_fill_cyan')" t-att-style="'width: ' + res.utilization + '%'"/>
+                                            </div>
+                                        </div>
+                                        <span class="pd_util_pct"><t t-esc="res.utilization"/>%</span>
+                                    </div>
                                 </t>
-                            </tbody>
-                        </table>
+                            </div>
+                        </div>
+
+                        <!-- 3. Daily Tasks (Screenshot 1 style with badge) -->
+                        <div class="pd_table_card_v2">
+                            <div class="pd_chart_header_v2">
+                                <div class="pd_card_title_v2"><i class="fa fa-calendar-check-o text-primary me-2"/>Daily Tasks</div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="badge bg-primary-subtle text-primary rounded-pill px-2 py-1 fw-bold">
+                                        <t t-esc="state.data.daily_tasks_total || (state.data.daily_tasks ? state.data.daily_tasks.length : 0)"/> Total
+                                    </span>
+                                    <span t-if="state.data.daily_logs_enabled" class="pd_view_link" t-on-click="openDailyLogs">View All <i class="fa fa-arrow-right ms-1"/></span>
+                                </div>
+                            </div>
+                            <div class="pd_daily_tasks_list">
+                                <t t-if="!state.data.daily_tasks || state.data.daily_tasks.length === 0">
+                                    <div class="pd_empty_v2" t-esc="state.data.daily_logs_enabled ? 'No daily logs in this date range' : 'Daily Logs module is not installed'"/>
+                                </t>
+                                <t t-foreach="state.data.daily_tasks || []" t-as="task" t-key="task.id">
+                                    <div class="pd_daily_task_row pd_row_clickable" t-on-click="() => this.openDailyLog(task.id)">
+                                        <div class="d-flex align-items-center flex-grow-1 overflow-hidden me-2">
+                                            <i t-att-class="task.is_done ? 'fa fa-check-circle text-success me-2' : 'fa fa-circle-o text-purple me-2'"/>
+                                            <div class="overflow-hidden">
+                                                <span class="pd_daily_task_title text-truncate d-block" t-att-title="task.name"><t t-esc="task.name"/></span>
+                                                <small class="text-muted text-truncate d-block"><t t-esc="task.task_name"/> · <t t-esc="task.logged_by"/></small>
+                                            </div>
+                                        </div>
+                                        <span class="pd_daily_time_badge">
+                                            <i class="fa fa-calendar me-1"/> <t t-esc="task.date"/>
+                                        </span>
+                                    </div>
+                                </t>
+                            </div>
+                        </div>
                     </div>
 
-                </div>
+                    <!-- ── Middle Row 3: Main Tasks & Subtasks + SDLC Workflow & Project Tracking ── -->
+                    <div class="pd_internal_bottom_grid">
+                        <!-- 1. Main Tasks & Subtasks (Screenshot 1 style, with separated subtasks) -->
+                        <div class="pd_table_card_v2">
+                            <div class="pd_chart_header_v2">
+                                <div class="pd_card_title_v2"><i class="fa fa-check-square-o text-primary me-2"/>Main Tasks &amp; Subtasks</div>
+                                <span class="pd_view_link" t-on-click="onKpiTotalTasksClick">View All <i class="fa fa-arrow-right ms-1"/></span>
+                            </div>
+                            <table class="pd_table_v2">
+                                <thead>
+                                    <tr>
+                                        <th>Main Task</th>
+                                        <th>Subtasks</th>
+                                        <th>Progress</th>
+                                        <th>Status</th>
+                                        <th>Due Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <t t-if="!state.data.main_and_subtasks || state.data.main_and_subtasks.length === 0">
+                                        <tr><td colspan="5" class="pd_empty_v2">No tasks available in this period</td></tr>
+                                    </t>
+                                    <t t-foreach="state.data.main_and_subtasks || []" t-as="mt" t-key="mt.id">
+                                        <tr class="pd_row_clickable" t-on-click="() => this.openTaskForm(mt.id)">
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <i t-att-class="'fa me-2 text-muted ' + (state.expandedTasks and state.expandedTasks[mt.id] ? 'fa-chevron-down text-primary' : 'fa-chevron-right')" t-on-click.stop="() => this.toggleSubtasks(mt.id)" style="font-size: 11px; cursor: pointer;"/>
+                                                    <div>
+                                                        <div class="fw-bold text-dark"><t t-esc="mt.name"/></div>
+                                                        <small class="text-muted"><t t-esc="mt.project"/></small>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-light text-dark border px-2 py-1"><t t-esc="mt.subtask_str"/></span>
+                                            </td>
+                                            <td style="width: 25%;">
+                                                <div class="pd_bar_wrap_v2">
+                                                    <div class="pd_bar_track_v2">
+                                                        <div t-att-class="'pd_bar_fill_v2 ' + (mt.progress === 100 ? 'pd_fill_green' : mt.progress >= 50 ? 'pd_fill_blue' : 'pd_fill_orange')" t-att-style="'width: ' + mt.progress + '%'"/>
+                                                    </div>
+                                                    <span class="pd_bar_pct_v2"><t t-esc="mt.progress"/>%</span>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span t-att-class="'pd_status_badge ' + (mt.status === 'Completed' ? 'pd_status_completed' : mt.status === 'In Progress' ? 'pd_status_inprogress' : mt.status === 'Planning' ? 'pd_status_planning' : mt.status === 'Re-Work' ? 'pd_status_rework' : 'pd_status_notstarted')">
+                                                    <t t-esc="mt.status"/>
+                                                </span>
+                                            </td>
+                                            <td class="text-muted"><t t-esc="mt.due_date"/></td>
+                                        </tr>
+                                        <!-- Separated Subtasks Accordion -->
+                                        <t t-if="state.expandedTasks and state.expandedTasks[mt.id]">
+                                            <t t-foreach="mt.subtasks || []" t-as="st" t-key="st.id">
+                                                <tr class="pd_subtask_row" t-on-click="() => this.openTaskForm(st.id)">
+                                                    <td colspan="2" class="ps-4">
+                                                        <i class="fa fa-level-up fa-rotate-90 me-2 text-muted"/>
+                                                        <span class="text-secondary"><t t-esc="st.name"/></span>
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge bg-light text-muted border"><t t-esc="st.stage"/></span>
+                                                    </td>
+                                                    <td>
+                                                        <span t-if="st.is_done" class="badge bg-success-subtle text-success"><i class="fa fa-check me-1"/>Done</span>
+                                                        <span t-else="" class="badge bg-light text-secondary">In Progress</span>
+                                                    </td>
+                                                    <td class="text-muted"><t t-esc="st.deadline || 'No deadline'"/></td>
+                                                </tr>
+                                            </t>
+                                        </t>
+                                    </t>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- 2. SDLC Workflow & Stage Tracking (highlighting Planning & Re-Work) -->
+                        <div class="pd_table_card_v2">
+                            <div class="pd_chart_header_v2">
+                                <div class="pd_card_title_v2"><i class="fa fa-code-fork text-primary me-2"/>SDLC Workflow &amp; Stage Tracking</div>
+                                <span class="pd_view_link" t-on-click="onKpiTotalProjectsClick">View All <i class="fa fa-arrow-right ms-1"/></span>
+                            </div>
+                            <table class="pd_table_v2">
+                                <thead>
+                                    <tr>
+                                        <th>Project</th>
+                                        <th>SDLC Phase</th>
+                                        <th>Tasks</th>
+                                        <th>Workflow Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <t t-if="!state.data.sdlc_workflow || state.data.sdlc_workflow.length === 0">
+                                        <tr><td colspan="4" class="pd_empty_v2">No SDLC pipeline records found</td></tr>
+                                    </t>
+                                    <t t-foreach="state.data.sdlc_workflow || []" t-as="sdlc" t-key="sdlc_index">
+                                        <tr class="pd_row_clickable" t-on-click="() => this.onTopProjectClick(sdlc.project_id)">
+                                            <td>
+                                                <div class="fw-bold text-dark"><t t-esc="sdlc.project_name"/></div>
+                                                <small class="text-muted"><i class="fa fa-calendar-o me-1"/><t t-esc="sdlc.due_date"/></small>
+                                            </td>
+                                            <td>
+                                                <span t-att-class="'pd_sdlc_phase_badge ' + (sdlc.is_rework ? 'pd_phase_rework' : sdlc.is_planning ? 'pd_phase_planning' : sdlc.phase === 'Testing \u0026 Review' ? 'pd_phase_testing' : sdlc.phase === 'Development' ? 'pd_phase_dev' : 'pd_phase_impl')">
+                                                    <t t-esc="sdlc.phase"/>
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <span class="fw-semibold me-2"><t t-esc="sdlc.task_count"/></span>
+                                                    <div class="pd_bar_track_v2" style="width: 60px;">
+                                                        <div t-att-class="'pd_bar_fill_v2 ' + (sdlc.is_rework ? 'pd_fill_red' : sdlc.is_planning ? 'pd_fill_cyan' : 'pd_fill_blue')" t-att-style="'width: ' + sdlc.progress + '%'"/>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span t-att-class="'pd_status_badge ' + (sdlc.is_rework ? 'pd_status_rework' : sdlc.status === 'Completed' || sdlc.status === 'Verified' ? 'pd_status_completed' : sdlc.status === 'In Progress' || sdlc.status === 'In Review' ? 'pd_status_inprogress' : 'pd_status_planning')">
+                                                    <t t-esc="sdlc.status"/>
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- ── Bottom Row: 4 Cards (Screenshot 2 style) ── -->
+                    <div class="pd_internal_bottom_cards_grid">
+                        <!-- 1. Recently Created Tasks -->
+                        <div class="pd_mini_card_v2">
+                            <div class="pd_mini_card_header">
+                                <div class="pd_mini_card_title">
+                                    <i class="fa fa-calendar-plus-o text-primary me-2"/> Recently Created Tasks
+                                </div>
+                                <span class="pd_view_link" t-on-click="onKpiTotalTasksClick">View All <i class="fa fa-arrow-right ms-1"/></span>
+                            </div>
+                            <div class="pd_mini_card_body">
+                                <t t-if="!state.data.recent_activities || state.data.recent_activities.length === 0">
+                                    <div class="pd_empty_v2">No recent tasks</div>
+                                </t>
+                                <t t-foreach="state.data.recent_activities || []" t-as="item" t-key="item.id">
+                                    <div class="pd_mini_item pd_row_clickable" t-on-click="() => this.openTaskForm(item.id)">
+                                        <div class="d-flex align-items-center overflow-hidden flex-grow-1 me-2">
+                                            <span class="pd_bullet_purple me-2"/>
+                                            <span class="pd_mini_text text-truncate" t-att-title="item.name"><t t-esc="item.name"/></span>
+                                        </div>
+                                        <span class="pd_mini_time text-nowrap"><t t-esc="item.time_ago"/> <i class="fa fa-chevron-right ms-1"/></span>
+                                    </div>
+                                </t>
+                            </div>
+                        </div>
+
+                        <!-- 2. Upcoming Deadlines -->
+                        <div class="pd_mini_card_v2">
+                            <div class="pd_mini_card_header">
+                                <div class="pd_mini_card_title">
+                                    <i class="fa fa-clock-o text-danger me-2"/> Upcoming Deadlines
+                                </div>
+                                <span class="pd_view_link" t-on-click="onKpiTotalTasksClick">View All <i class="fa fa-arrow-right ms-1"/></span>
+                            </div>
+                            <div class="pd_mini_card_body">
+                                <t t-if="!state.data.upcoming_deadlines || state.data.upcoming_deadlines.length === 0">
+                                    <div class="pd_empty_v2">No upcoming deadlines</div>
+                                </t>
+                                <t t-foreach="state.data.upcoming_deadlines || []" t-as="item" t-key="item.id">
+                                    <div class="pd_mini_item pd_row_clickable" t-on-click="() => this.openTaskForm(item.id)">
+                                        <div class="d-flex align-items-center overflow-hidden flex-grow-1 me-2">
+                                            <i class="fa fa-calendar text-danger me-2" style="font-size: 13px;"/>
+                                            <span class="pd_mini_text text-truncate" t-att-title="item.name"><t t-esc="item.name"/></span>
+                                        </div>
+                                        <span class="pd_mini_time text-nowrap"><t t-esc="item.deadline"/> <i class="fa fa-chevron-right ms-1"/></span>
+                                    </div>
+                                </t>
+                            </div>
+                        </div>
+
+                        <!-- 3. Overdue Tasks -->
+                        <div class="pd_mini_card_v2">
+                            <div class="pd_mini_card_header">
+                                <div class="pd_mini_card_title">
+                                    <i class="fa fa-exclamation-triangle text-warning me-2"/> Overdue Tasks
+                                </div>
+                                <span class="pd_view_link" t-on-click="onKpiOverdueTasksClick">View All <i class="fa fa-arrow-right ms-1"/></span>
+                            </div>
+                            <div class="pd_mini_card_body">
+                                <t t-if="!state.data.overdue_task_data || state.data.overdue_task_data.length === 0">
+                                    <div class="pd_empty_v2 text-success"><i class="fa fa-check me-1"/>No overdue tasks!</div>
+                                </t>
+                                <t t-foreach="state.data.overdue_task_data || []" t-as="item" t-key="item.id">
+                                    <div class="pd_mini_item pd_row_clickable" t-on-click="() => this.openTaskForm(item.id)">
+                                        <div class="d-flex align-items-center overflow-hidden flex-grow-1 me-2">
+                                            <span class="pd_bullet_red me-2"/>
+                                            <span class="pd_mini_text text-truncate" t-att-title="item.name"><t t-esc="item.name"/></span>
+                                        </div>
+                                        <span class="pd_mini_time text-danger text-nowrap"><t t-esc="item.time_ago"/> <i class="fa fa-chevron-right ms-1"/></span>
+                                    </div>
+                                </t>
+                            </div>
+                        </div>
+
+                        <!-- 4. Alerts -->
+                        <div class="pd_mini_card_v2">
+                            <div class="pd_mini_card_header">
+                                <div class="pd_mini_card_title">
+                                    <i class="fa fa-bell text-primary me-2"/> Alerts
+                                </div>
+                            </div>
+                            <div class="pd_mini_card_body">
+                                <t t-if="!state.data.alerts || state.data.alerts.length === 0">
+                                    <div class="pd_empty_v2 text-success"><i class="fa fa-check-circle me-1"/>All systems normal</div>
+                                </t>
+                                <t t-foreach="state.data.alerts || []" t-as="item" t-key="item_index">
+                                    <div class="pd_alert_banner pd_row_clickable" t-on-click="onKpiOverdueTasksClick">
+                                        <div class="d-flex align-items-center">
+                                            <i class="fa fa-exclamation-triangle text-danger me-2"/>
+                                            <span class="fw-semibold text-danger"><t t-esc="item.message"/></span>
+                                        </div>
+                                        <i class="fa fa-chevron-right text-danger ms-2"/>
+                                    </div>
+                                </t>
+                            </div>
+                        </div>
+                    </div>
+                </t>
 
             </t>
 
         </div>
     </t>
 
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <!-- DETAILED PROJECT DASHBOARD                                         -->
+    <!-- ══════════════════════════════════════════════════════════════════ -->
     <t t-name="project_dashboard_v19c.ProjectDetailDashboard">
         <div class="o_project_dashboard ppd_wrapper">
             <!-- ── Header ── -->
@@ -397,8 +838,14 @@ d</td>
                         <t t-esc="state.data.project.status === 'in_progress' ? 'In Progress' : state.data.project.status === 'on_hold' ? 'On Hold' : state.data.project.status === 'done' ? 'Done' : state.data.project.status === 'cancelled' ? 'Cancelled' : 'New'"/>
                     </span>
                 </div>
-                <div class="ppd_header_actions d-flex align-items-center">
-                    <div class="btn-group me-3" role="group">
+                <div t-att-class="'ppd_header_actions d-flex align-items-center ' + (state.projectType === 'internal' ? 'ppd_internal_header_actions' : '')">
+                    <select t-if="state.projectType === 'internal'" class="form-select form-select-sm me-2 pd_header_select" style="width:auto" t-att-value="state.dateFilter" t-on-change="onDateFilterChange" aria-label="Filter dashboard by date">
+                        <option value="month">This Month</option>
+                        <option value="day">Today</option>
+                        <option value="year">This Year</option>
+                        <option value="all">All Time</option>
+                    </select>
+                    <div class="btn-group me-3 pd_type_toggle" role="group">
                         <button type="button" 
                                 t-att-class="'btn btn-sm ' + (state.projectType === 'client' ? 'btn-primary' : 'btn-outline-primary')"
                                 t-on-click="() => this.setProjectType('client')">Client</button>
@@ -406,16 +853,16 @@ d</td>
                                 t-att-class="'btn btn-sm ' + (state.projectType === 'internal' ? 'btn-primary' : 'btn-outline-primary')"
                                 t-on-click="() => this.setProjectType('internal')">Internal</button>
                     </div>
-                    <select class="ppd_project_select" t-on-change="onProjectChange">
+                    <select class="ppd_project_select form-select form-select-sm" t-on-change="onProjectChange">
                         <option value="" disabled="disabled" t-att-selected="!state.selectedProjectId">Select Project...</option>
-                        <t t-foreach="state.projectsList" t-as="p" t-key="p.id">
+                        <t t-foreach="state.projectsList || []" t-as="p" t-key="p.id">
                             <option t-att-value="p.id" t-att-selected="p.id === state.selectedProjectId">
                                 <t t-esc="p.name"/>
                             </option>
                         </t>
                     </select>
-                    <button class="btn btn-primary btn-sm ms-2" t-on-click="() => this.loadProjectDetail(this.state.selectedProjectId)">
-                        <i class="fa fa-refresh me-1"/>
+                    <button class="btn btn-primary btn-sm ppd_refresh_btn" t-on-click="() => this.loadProjectDetail(this.state.selectedProjectId)" title="Refresh dashboard">
+                        <i class="fa fa-refresh me-1"/><span t-if="state.projectType === 'internal'">Refresh</span>
                     </button>
                 </div>
             </div>
@@ -433,332 +880,789 @@ d</td>
                 <div class="pd_empty_state">
                     <i class="fa fa-exclamation-triangle fa-3x text-danger mb-3"/>
                     <h4>Could not load project</h4>
-                    <p class="text-muted">
-                        <t t-esc="state.error"/>
-                    </p>
+                    <p class="text-muted"><t t-esc="state.error"/></p>
                     <button class="btn btn-primary mt-2" t-on-click="() => this.loadProjectDetail(this.state.selectedProjectId)">
-                        <i class="fa fa-refresh me-1"/>
-                        Try Again
+                        <i class="fa fa-refresh me-1"/> Try Again
                     </button>
                 </div>
             </t>
 
             <t t-elif="state.data">
                 
-                <!-- ════════════════════ ROW 1 ════════════════════ -->
-                <div class="ppd_row1_grid">
-                    
-                    <!-- 1. Overall Project Progress -->
-                    <div class="pd_table_card ppd_progress_card">
-                        <div class="pd_card_title">Overall Project Progress</div>
-                        <div class="ppd_donut_wrap">
-                            <svg class="ppd_donut_svg" viewBox="0 0 120 120">
-                                <circle class="ppd_donut_bg" cx="60" cy="60" r="52"/>
-                                <circle class="ppd_donut_fill" cx="60" cy="60" r="52" 
-                                        t-att-style="'stroke-dasharray: ' + (state.data.project.overall_progress * 326.73 / 100) + ' 326.73'"/>
-                            </svg>
-                            <div class="ppd_donut_center">
-                                <span class="ppd_donut_pct"><t t-esc="state.data.project.overall_progress"/>%</span>
+                <!-- ════════════════════════════════════════════════════════ -->
+                <!-- CLIENT DETAIL DASHBOARD (PRESERVED 100% UNTOUCHED)        -->
+                <!-- ════════════════════════════════════════════════════════ -->
+                <t t-if="state.projectType === 'client'">
+                    <!-- ROW 1 -->
+                    <div class="ppd_row1_grid">
+                        <div class="pd_table_card ppd_progress_card">
+                            <div class="pd_card_title">Overall Project Progress</div>
+                            <div class="ppd_donut_wrap">
+                                <svg class="ppd_donut_svg" viewBox="0 0 120 120">
+                                    <circle class="ppd_donut_bg" cx="60" cy="60" r="52"/>
+                                    <circle class="ppd_donut_fill" cx="60" cy="60" r="52"
+                                            t-att-style="'stroke-dasharray: ' + (state.data.project.overall_progress * 326.73 / 100) + ' 326.73'"/>
+                                </svg>
+                                <div class="ppd_donut_center">
+                                    <span class="ppd_donut_pct"><t t-esc="state.data.project.overall_progress"/>%</span>
+                                </div>
+                            </div>
+                            <div class="ppd_progress_meta">
+                                <div class="d-flex justify-content-between w-100">
+                                    <span class="text-primary fw-bold"><t t-esc="state.data.project.overall_progress"/>% Complete</span>
+                                    <span class="text-muted"><t t-esc="100 - state.data.project.overall_progress"/>% Remaining</span>
+                                </div>
+                                <span class="ppd_start_date text-muted mt-1">Start: <t t-esc="state.data.project.start_date"/></span>
                             </div>
                         </div>
-                        <div class="ppd_progress_meta">
-                            <div class="d-flex justify-content-between w-100">
-                                <span class="text-primary fw-bold"><t t-esc="state.data.project.overall_progress"/>% Complete</span>
-                                <span class="text-muted"><t t-esc="100 - state.data.project.overall_progress"/>% Remaining</span>
-                            </div>
-                            <span class="ppd_start_date text-muted mt-1">Start: <t t-esc="state.data.project.start_date"/></span>
-                        </div>
-                    </div>
 
-                    <!-- 2. Key Milestones -->
-                    <div class="pd_table_card ppd_milestones_card">
-                        <div class="pd_card_title">Key Milestones</div>
-                        <div class="ppd_milestone_list">
-                            <t t-foreach="state.data.milestones" t-as="ms" t-key="ms.id">
-                                <div class="ppd_milestone_row">
-                                    <div class="ppd_milestone_dot" t-att-class="ms.is_reached ? 'ppd_dot_reached' : (ms.progress > 0 ? 'ppd_dot_active' : '')"/>
-                                    <span class="ppd_milestone_name" t-att-title="ms.name"><t t-esc="ms.name"/></span>
-                                    <div class="ppd_milestone_bar_wrap">
-                                        <div class="pd_progress_bar">
-                                            <div class="pd_progress_fill" t-att-style="'width: ' + ms.progress + '%'"
-                                                 t-att-class="ms.progress === 100 ? 'ppd_fill_complete' : ms.progress >= 50 ? 'ppd_fill_good' : ''"/>
+                        <div class="pd_table_card ppd_milestones_card">
+                            <div class="pd_card_title">Key Milestones</div>
+                            <div class="ppd_milestone_list">
+                                <t t-foreach="state.data.milestones || []" t-as="ms" t-key="ms.id">
+                                    <div class="ppd_milestone_row">
+                                        <div class="ppd_milestone_dot" t-att-class="ms.is_reached ? 'ppd_dot_reached' : (ms.progress > 0 ? 'ppd_dot_active' : '')"/>
+                                        <span class="ppd_milestone_name" t-att-title="ms.name"><t t-esc="ms.name"/></span>
+                                        <div class="ppd_milestone_bar_wrap">
+                                            <div class="pd_progress_bar">
+                                                <div class="pd_progress_fill" t-att-style="'width: ' + ms.progress + '%'"
+                                                     t-att-class="ms.progress === 100 ? 'ppd_fill_complete' : ms.progress >= 50 ? 'ppd_fill_good' : ''"/>
+                                            </div>
                                         </div>
+                                        <span class="ppd_milestone_pct"><t t-esc="ms.progress"/>%</span>
                                     </div>
-                                    <span class="ppd_milestone_pct"><t t-esc="ms.progress"/>%</span>
-                                </div>
-                            </t>
-                            <t t-if="!state.data.milestones || state.data.milestones.length === 0">
-                                <div class="pd_empty">No milestones found</div>
-                            </t>
-                        </div>
-                    </div>
-
-                    <!-- 3. Milestone Acceptance / Sign-Off -->
-                    <div class="pd_table_card ppd_acceptance_card">
-                        <div class="pd_card_title">
-                            <span>Milestone Acceptance/Sign-Off</span>
-                            <i class="fa fa-info-circle text-muted" title="Click 'Awaiting' or 'Signed' to toggle sign-off status"/>
-                        </div>
-                        <div class="ppd_acceptance_list">
-                            <t t-foreach="state.data.milestones" t-as="ms" t-key="ms.id">
-                                <div class="ppd_acceptance_row">
-                                    <span class="ppd_acceptance_name" t-att-title="ms.name"><t t-esc="ms.name"/></span>
-                                    <div class="ppd_acceptance_badge_wrap">
-                                        <t t-if="ms.acceptance_status === 'signed'">
-                                            <span class="ppd_pill_signed ppd_clickable_pill" t-on-click="() => this.onToggleMilestone(ms.id)" title="Milestone reached and signed! Click to unmark.">
-                                                <i class="fa fa-check me-1"/>Signed
-                                            </span>
-                                        </t>
-                                        <t t-elif="ms.acceptance_status === 'awaiting'">
-                                            <span class="ppd_pill_awaiting ppd_clickable_pill" t-on-click="() => this.onToggleMilestone(ms.id)" title="Tasks 100% complete! Click to Sign off / Reach.">
-                                                <i class="fa fa-clock-o me-1"/>Awaiting
-                                            </span>
-                                        </t>
-                                        <t t-elif="ms.acceptance_status === 'in_progress'">
-                                            <span class="ppd_pill_inprogress" title="Phase is currently in progress">
-                                                In Progress
-                                            </span>
-                                        </t>
-                                        <t t-else="">
-                                            <span class="ppd_pill_pending" title="Phase pending start">
-                                                Pending
-                                            </span>
-                                        </t>
-                                    </div>
-                                </div>
-                            </t>
-                            <t t-if="!state.data.milestones || state.data.milestones.length === 0">
-                                <div class="pd_empty">No milestones</div>
-                            </t>
-                        </div>
-                    </div>
-
-                    <!-- 4. Project Workload -->
-                    <div class="pd_chart_card ppd_workload_card">
-                        <div class="pd_card_title">Project Workload</div>
-                        <div class="pd_chart_container">
-                            <canvas t-ref="chartWorkload" class="pd_canvas"/>
-                        </div>
-                    </div>
-
-                </div>
-
-                <!-- ════════════════════ ROW 2 ════════════════════ -->
-                <div class="ppd_row2_grid mt-3">
-                    
-                    <!-- 1. Tasks by Status -->
-                    <div class="pd_chart_card">
-                        <div class="pd_card_title">Tasks by Status</div>
-                        <div class="pd_chart_container">
-                            <canvas t-ref="chartTasksStatus" class="pd_canvas"/>
-                        </div>
-                    </div>
-
-                    <!-- 2. Tasks by Assignee -->
-                    <div class="pd_chart_card">
-                        <div class="pd_card_title">Tasks by Consultant/Team</div>
-                        <div class="pd_chart_container">
-                            <canvas t-ref="chartTasksConsultant" class="pd_canvas"/>
-                        </div>
-                    </div>
-
-                    <!-- 3. Client Pending Actions -->
-                    <div class="pd_table_card ppd_client_actions_card">
-                        <div class="pd_card_title">
-                            <span>Client Pending Actions</span>
-                            <button class="btn btn-link btn-sm p-0 text-primary" t-on-click="onAddClientAction" title="Add Client Action">
-                                <i class="fa fa-plus-circle fa-lg"/>
-                            </button>
-                        </div>
-                        <div class="ppd_client_actions_list">
-                            <t t-if="!state.data.client_actions || state.data.client_actions.length === 0">
-                                <div class="pd_empty">No pending client actions 🎉</div>
-                            </t>
-                            <t t-foreach="state.data.client_actions" t-as="ca" t-key="ca.id">
-                                <div class="ppd_client_action_item" t-att-class="ca.is_done ? 'ppd_action_done' : ''">
-                                    <div class="ppd_action_check_wrap" t-on-click="() => this.onToggleClientAction(ca.id)">
-                                        <i t-if="ca.is_done" class="fa fa-check-circle text-success ppd_check_icon"/>
-                                        <i t-else="" class="fa fa-circle-o text-muted ppd_check_icon"/>
-                                    </div>
-                                    <div class="ppd_action_content">
-                                        <span class="ppd_action_name"><t t-esc="ca.name"/></span>
-                                        <div class="ppd_action_sub">
-                                            <span t-if="ca.date_due" class="ppd_action_due text-muted">
-                                                <i class="fa fa-calendar-o me-1"/>Due: <t t-esc="ca.date_due"/>
-                                            </span>
-                                            <span t-if="ca.contact" class="ppd_action_contact text-muted ms-2">
-                                                <i class="fa fa-user-o me-1"/><t t-esc="ca.contact"/>
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </t>
-                        </div>
-                    </div>
-
-                    <!-- 4. Go-Live Readiness -->
-                    <div class="pd_table_card ppd_golive_card">
-                        <div class="pd_card_title">Go-Live Readiness</div>
-                        <div class="ppd_golive_gauge_wrap">
-                            <svg class="ppd_golive_gauge" viewBox="0 0 100 50">
-                                <path class="ppd_gauge_bg" d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke-width="14" stroke-linecap="round"/>
-                                <path class="ppd_gauge_fill" d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke-width="14" stroke-linecap="round"
-                                      t-att-class="state.data.go_live_readiness >= 80 ? 'ppd_gauge_good' : state.data.go_live_readiness >= 50 ? 'ppd_gauge_warn' : 'ppd_gauge_bad'"
-                                      t-att-style="'stroke-dasharray: ' + (state.data.go_live_readiness * 125.66 / 100) + ' 125.66'"/>
-                            </svg>
-                            <div class="ppd_gauge_score">
-                                <span><t t-esc="state.data.go_live_readiness"/></span><small>/100</small>
+                                </t>
+                                <t t-if="!state.data.milestones || state.data.milestones.length === 0">
+                                    <div class="pd_empty">No milestones found</div>
+                                </t>
                             </div>
                         </div>
-                        <div class="ppd_golive_badge_wrap mt-2">
-                            <span t-if="state.data.go_live_readiness >= 80" class="badge bg-success px-3 py-1">Ready</span>
-                            <span t-elif="state.data.go_live_readiness >= 50" class="badge bg-warning text-dark px-3 py-1">On Track</span>
-                            <span t-else="" class="badge bg-danger px-3 py-1">Needs Attention</span>
-                        </div>
-                    </div>
 
-                </div>
-
-                <!-- ════════════════════ ROW 3 ════════════════════ -->
-                <div class="ppd_row3_grid mt-3">
-                    
-                    <!-- 1. Upcoming Deadlines -->
-                    <div class="pd_table_card ppd_deadlines_card">
-                        <div class="pd_card_title">Upcoming Deadlines</div>
-                        <table class="pd_table">
-                            <thead>
-                                <tr>
-                                    <th>Task</th>
-                                    <th>Deadline</th>
-                                    <th>Left</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <t t-if="!state.data.upcoming_deadlines || state.data.upcoming_deadlines.length === 0">
-                                    <tr>
-                                        <td colspan="3" class="pd_empty">No upcoming deadlines</td>
-                                    </tr>
-                                </t>
-                                <t t-foreach="state.data.upcoming_deadlines" t-as="d" t-key="d.id">
-                                    <tr class="pd_row_clickable" t-on-click="() => this.openTask(d.id)">
-                                        <td>
-                                            <t t-esc="d.name"/>
-                                            <t t-if="d.critical"><span class="badge bg-danger ms-1">Critical</span></t>
-                                        </td>
-                                        <td><t t-esc="d.deadline"/></td>
-                                        <td t-att-class="d.days_left &lt;= 3 ? 'text-danger fw-bold' : d.days_left &lt;= 7 ? 'text-warning fw-bold' : 'text-success'">
-                                            <t t-esc="d.days_left"/>d
-                                        </td>
-                                    </tr>
-                                </t>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <!-- 2. Project Timeline / Gantt -->
-                    <div class="pd_table_card ppd_timeline_card">
-                        <div class="pd_card_title">Project Timeline / Gantt</div>
-                        <div class="ppd_timeline">
-                            <t t-foreach="state.data.timeline" t-as="phase" t-key="phase_index">
-                                <div class="ppd_timeline_row">
-                                    <div class="ppd_timeline_label" t-att-title="phase.name"><t t-esc="phase.name"/></div>
-                                    <div class="ppd_timeline_bar_area">
-                                        <div class="ppd_timeline_bar" t-att-style="'width: ' + (phase.progress || 5) + '%'"
-                                             t-att-class="phase.is_reached ? 'ppd_bar_complete' : 'ppd_bar_active'">
+                        <div class="pd_table_card ppd_acceptance_card">
+                            <div class="pd_card_title">
+                                <span>Milestone Acceptance/Sign-Off</span>
+                                <i class="fa fa-info-circle text-muted" title="Click 'Awaiting' or 'Signed' to toggle sign-off status"/>
+                            </div>
+                            <div class="ppd_acceptance_list">
+                                <t t-foreach="state.data.milestones || []" t-as="ms" t-key="ms.id">
+                                    <div class="ppd_acceptance_row">
+                                        <span class="ppd_acceptance_name" t-att-title="ms.name"><t t-esc="ms.name"/></span>
+                                        <div class="ppd_acceptance_badge_wrap">
+                                            <t t-if="ms.acceptance_status === 'signed'">
+                                                <span class="ppd_pill_signed ppd_clickable_pill" t-on-click="() => this.onToggleMilestone(ms.id)" title="Milestone reached and signed! Click to unmark.">
+                                                    <i class="fa fa-check me-1"/>Signed
+                                                </span>
+                                            </t>
+                                            <t t-elif="ms.acceptance_status === 'awaiting'">
+                                                <span class="ppd_pill_awaiting ppd_clickable_pill" t-on-click="() => this.onToggleMilestone(ms.id)" title="Tasks 100% complete! Click to Sign off / Reach.">
+                                                    <i class="fa fa-clock-o me-1"/>Awaiting
+                                                </span>
+                                            </t>
+                                            <t t-elif="ms.acceptance_status === 'in_progress'">
+                                                <span class="ppd_pill_inprogress" title="Phase is currently in progress">In Progress</span>
+                                            </t>
+                                            <t t-else="">
+                                                <span class="ppd_pill_pending" title="Phase pending start">Pending</span>
+                                            </t>
                                         </div>
-                                        <span class="ppd_timeline_dates" t-if="phase.has_dates">
-                                            <t t-esc="phase.start"/> — <t t-esc="phase.end"/>
-                                        </span>
-                                        <span class="ppd_timeline_dates text-muted fst-italic" t-else="">
-                                            <t t-esc="phase.progress"/>% complete · no deadlines set
-                                        </span>
                                     </div>
-                                </div>
-                            </t>
-                            <t t-if="!state.data.timeline || state.data.timeline.length === 0">
-                                <div class="pd_empty">No timeline data</div>
-                            </t>
+                                </t>
+                                <t t-if="!state.data.milestones || state.data.milestones.length === 0">
+                                    <div class="pd_empty">No milestones</div>
+                                </t>
+                            </div>
+                        </div>
+
+                        <div class="pd_chart_card ppd_workload_card">
+                            <div class="pd_card_title">Project Workload</div>
+                            <div class="pd_chart_container">
+                                <canvas t-ref="chartWorkload" class="pd_canvas"/>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- 3. Risks & Issues -->
-                    <div class="pd_table_card ppd_risks_card">
-                        <div class="pd_card_title">
-                            <span>Risks &amp; Issues</span>
-                            <button class="btn btn-link btn-sm p-0 text-primary" t-on-click="onAddRiskIssue" title="Add Risk/Issue">
-                                <i class="fa fa-plus-circle fa-lg"/>
-                            </button>
+                    <!-- ROW 2 -->
+                    <div class="ppd_row2_grid mt-3">
+                        <div class="pd_chart_card">
+                            <div class="pd_card_title">Tasks by Status</div>
+                            <div class="pd_chart_container">
+                                <canvas t-ref="chartTasksStatus" class="pd_canvas"/>
+                            </div>
                         </div>
-                        <table class="pd_table">
-                            <thead>
-                                <tr>
-                                    <th>Item</th>
-                                    <th>Severity</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <t t-if="!state.data.risks_and_issues || state.data.risks_and_issues.length === 0">
-                                    <tr>
-                                        <td colspan="2" class="pd_empty">No active risks or issues 🎉</td>
-                                    </tr>
+
+                        <div class="pd_chart_card">
+                            <div class="pd_card_title">Tasks by Consultant/Team</div>
+                            <div class="pd_chart_container">
+                                <canvas t-ref="chartTasksConsultant" class="pd_canvas"/>
+                            </div>
+                        </div>
+
+                        <div class="pd_table_card ppd_client_actions_card">
+                            <div class="pd_card_title">
+                                <span>Client Pending Actions</span>
+                                <button class="btn btn-link btn-sm p-0 text-primary" t-on-click="onAddClientAction" title="Add Client Action">
+                                    <i class="fa fa-plus-circle fa-lg"/>
+                                </button>
+                            </div>
+                            <div class="ppd_client_actions_list">
+                                <t t-if="!state.data.client_actions || state.data.client_actions.length === 0">
+                                    <div class="pd_empty">No pending client actions 🎉</div>
                                 </t>
-                                
-                                    <t t-foreach="state.data.risks_and_issues" t-as="ri" t-key="ri.id">
+                                <t t-foreach="state.data.client_actions || []" t-as="ca" t-key="ca.id">
+                                    <div class="ppd_client_action_item" t-att-class="ca.is_done ? 'ppd_action_done' : ''">
+                                        <div class="ppd_action_check_wrap" t-on-click="() => this.onToggleClientAction(ca.id)">
+                                            <i t-if="ca.is_done" class="fa fa-check-circle text-success ppd_check_icon"/>
+                                            <i t-else="" class="fa fa-circle-o text-muted ppd_check_icon"/>
+                                        </div>
+                                        <div class="ppd_action_content">
+                                            <span class="ppd_action_name"><t t-esc="ca.name"/></span>
+                                            <div class="ppd_action_sub">
+                                                <span t-if="ca.date_due" class="ppd_action_due text-muted">
+                                                    <i class="fa fa-calendar-o me-1"/>Due: <t t-esc="ca.date_due"/>
+                                                </span>
+                                                <span t-if="ca.contact" class="ppd_action_contact text-muted ms-2">
+                                                    <i class="fa fa-user-o me-1"/><t t-esc="ca.contact"/>
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </t>
+                            </div>
+                        </div>
+
+                        <div class="pd_table_card ppd_golive_card">
+                            <div class="pd_card_title">Go-Live Readiness</div>
+                            <div class="ppd_golive_gauge_wrap">
+                                <svg class="ppd_golive_gauge" viewBox="0 0 100 50">
+                                    <path class="ppd_gauge_bg" d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke-width="14" stroke-linecap="round"/>
+                                    <path class="ppd_gauge_fill" d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke-width="14" stroke-linecap="round"
+                                          t-att-class="state.data.go_live_readiness >= 80 ? 'ppd_gauge_good' : state.data.go_live_readiness >= 50 ? 'ppd_gauge_warn' : 'ppd_gauge_bad'"
+                                          t-att-style="'stroke-dasharray: ' + (state.data.go_live_readiness * 125.66 / 100) + ' 125.66'"/>
+                                </svg>
+                                <div class="ppd_gauge_score">
+                                    <span><t t-esc="state.data.go_live_readiness"/></span><small>/100</small>
+                                </div>
+                            </div>
+                            <div class="ppd_golive_badge_wrap mt-2">
+                                <span t-if="state.data.go_live_readiness >= 80" class="badge bg-success px-3 py-1">Ready</span>
+                                <span t-elif="state.data.go_live_readiness >= 50" class="badge bg-warning text-dark px-3 py-1">On Track</span>
+                                <span t-else="" class="badge bg-danger px-3 py-1">Needs Attention</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ROW 3 -->
+                    <div class="ppd_row3_grid mt-3">
+                        <div class="pd_table_card ppd_deadlines_card">
+                            <div class="pd_card_title">Upcoming Deadlines</div>
+                            <table class="pd_table">
+                                <thead>
+                                    <tr><th>Task</th><th>Deadline</th><th>Left</th></tr>
+                                </thead>
+                                <tbody>
+                                    <t t-if="!state.data.upcoming_deadlines || state.data.upcoming_deadlines.length === 0">
+                                        <tr><td colspan="3" class="pd_empty">No upcoming deadlines</td></tr>
+                                    </t>
+                                    <t t-foreach="state.data.upcoming_deadlines || []" t-as="d" t-key="d.id">
+                                        <tr class="pd_row_clickable" t-on-click="() => this.openTask(d.id)">
+                                            <td>
+                                                <t t-esc="d.name"/>
+                                                <t t-if="d.critical"><span class="badge bg-danger ms-1">Critical</span></t>
+                                            </td>
+                                            <td><t t-esc="d.deadline"/></td>
+                                            <td t-att-class="d.days_left &lt;= 3 ? 'text-danger fw-bold' : d.days_left &lt;= 7 ? 'text-warning fw-bold' : 'text-success'">
+                                                <t t-esc="d.days_left"/>d
+                                            </td>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="pd_table_card ppd_timeline_card">
+                            <div class="pd_card_title">Project Timeline / Gantt</div>
+                            <div class="ppd_timeline">
+                                <t t-foreach="state.data.timeline || []" t-as="phase" t-key="phase_index">
+                                    <div class="ppd_timeline_row">
+                                        <div class="ppd_timeline_label" t-att-title="phase.name"><t t-esc="phase.name"/></div>
+                                        <div class="ppd_timeline_bar_area">
+                                            <div class="ppd_timeline_bar" t-att-style="'width: ' + (phase.progress || 5) + '%'"
+                                                 t-att-class="phase.is_reached ? 'ppd_bar_complete' : 'ppd_bar_active'">
+                                            </div>
+                                            <span class="ppd_timeline_dates" t-if="phase.has_dates">
+                                                <t t-esc="phase.start"/> — <t t-esc="phase.end"/>
+                                            </span>
+                                            <span class="ppd_timeline_dates text-muted fst-italic" t-else="">
+                                                <t t-esc="phase.progress"/>% complete · no deadlines set
+                                            </span>
+                                        </div>
+                                    </div>
+                                </t>
+                                <t t-if="!state.data.timeline || state.data.timeline.length === 0">
+                                    <div class="pd_empty">No timeline data</div>
+                                </t>
+                            </div>
+                        </div>
+
+                        <div class="pd_table_card ppd_risks_card">
+                            <div class="pd_card_title">
+                                <span>Risks &amp; Issues</span>
+                                <button class="btn btn-link btn-sm p-0 text-primary" t-on-click="onAddRiskIssue" title="Add Risk/Issue">
+                                    <i class="fa fa-plus-circle fa-lg"/>
+                                </button>
+                            </div>
+                            <table class="pd_table">
+                                <thead>
+                                    <tr><th>Item</th><th>Severity</th></tr>
+                                </thead>
+                                <tbody>
+                                    <t t-if="!state.data.risks_and_issues || state.data.risks_and_issues.length === 0">
+                                        <tr><td colspan="2" class="pd_empty">No active risks or issues 🎉</td></tr>
+                                    </t>
+                                    <t t-foreach="state.data.risks_and_issues || []" t-as="ri" t-key="ri.id">
                                         <tr t-att-class="'pd_row_clickable' + (ri.status === 'closed' ? ' ppd_risk_closed' : '')"
                                             t-on-click="() => this.openRiskIssue(ri.id)">
-                                        <td>
-                                            <div class="ppd_risk_name"><t t-esc="ri.name"/></div>
-                                            <small class="text-muted">
-                                                <span t-att-class="'ppd_type_badge ppd_type_' + ri.type"><t t-esc="ri.type"/></span>
-                                                <t t-if="ri.assigned_to"> • <t t-esc="ri.assigned_to"/></t>
-                                                <t t-if="ri.submitted_date"> • Submitted: <t t-esc="ri.submitted_date"/></t>
-    <t t-if="ri.closed_date"> • Closed:         <t t-esc="ri.closed_date"/></t>
-                                            </small>
-                                        </td>
-                                        <td>
-                                            <span t-if="ri.severity === 'high'" class="ppd_sev_pill ppd_sev_high">High</span>
-                                            <span t-elif="ri.severity === 'medium'" class="ppd_sev_pill ppd_sev_medium">Medium</span>
-                                            <span t-else="" class="ppd_sev_pill ppd_sev_low">Low</span>
-                                        </td>
-                                    </tr>
+                                            <td>
+                                                <div class="ppd_risk_name"><t t-esc="ri.name"/></div>
+                                                <small class="text-muted">
+                                                    <span t-att-class="'ppd_type_badge ppd_type_' + ri.type"><t t-esc="ri.type"/></span>
+                                                    <t t-if="ri.assigned_to"> • <t t-esc="ri.assigned_to"/></t>
+                                                    <t t-if="ri.submitted_date"> • Submitted: <t t-esc="ri.submitted_date"/></t>
+                                                    <t t-if="ri.closed_date"> • Closed: <t t-esc="ri.closed_date"/></t>
+                                                </small>
+                                            </td>
+                                            <td>
+                                                <span t-if="ri.severity === 'high'" class="ppd_sev_pill ppd_sev_high">High</span>
+                                                <span t-elif="ri.severity === 'medium'" class="ppd_sev_pill ppd_sev_medium">Medium</span>
+                                                <span t-else="" class="ppd_sev_pill ppd_sev_low">Low</span>
+                                            </td>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="pd_table_card ppd_timesheet_card">
+                            <div class="pd_card_title">Timesheet by Task</div>
+                            <table class="pd_table mt-2">
+                                <thead>
+                                    <tr><th>Task</th><th>Allocated</th><th>Time Taken</th><th>Status</th></tr>
+                                </thead>
+                                <tbody>
+                                    <t t-if="!state.data.task_timesheets || state.data.task_timesheets.length === 0">
+                                        <tr><td colspan="4" class="pd_empty">No timesheet logged</td></tr>
+                                    </t>
+                                    <t t-foreach="state.data.task_timesheets || []" t-as="tts" t-key="tts.task_id">
+                                        <tr class="pd_row_clickable" t-on-click="() => this.openTask(tts.task_id)">
+                                            <td><t t-esc="tts.task_name"/></td>
+                                            <td><t t-esc="tts.allocated_hours"/> h</td>
+                                            <td class="fw-bold"><t t-esc="tts.total_hours"/> h</td>
+                                            <td>
+                                                <span t-att-class="'badge bg-' + tts.status_color"><t t-esc="tts.status"/></span>
+                                            </td>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </t>
+
+                <!-- ════════════════════════════════════════════════════════ -->
+                <!-- INTERNAL DETAIL DASHBOARD (INDIVIDUAL PROJECT LAYOUT)     -->
+                <!-- ════════════════════════════════════════════════════════ -->
+                <t t-else="">
+                    <!-- ── Individual KPI Cards ── -->
+                    <div class="pd_internal_kpi_grid">
+                        <div class="pd_kpi_card_v2 pd_kpi_v2_purple pd_row_clickable" t-on-click="() => this.openTaskCategory('all')">
+                            <div class="pd_kpi_v2_top">
+                                <div class="pd_kpi_v2_icon"><i class="fa fa-clipboard"/></div>
+                                <div class="pd_kpi_v2_info">
+                                    <span class="pd_kpi_v2_label">Total Tasks</span>
+                                    <div class="pd_kpi_v2_value"><t t-esc="state.data.kpis.total_tasks"/></div>
+                                </div>
+                                <div t-att-class="'pd_kpi_v2_trend ' + state.data.kpis.total_tasks_trend_class" t-att-title="state.data.kpis.total_tasks_trend_title">
+                                    <i t-att-class="'fa ' + state.data.kpis.total_tasks_trend_icon"/> <t t-esc="state.data.kpis.total_tasks_trend"/>
+                                </div>
+                            </div>
+                            <svg class="pd_kpi_v2_wave" viewBox="0 0 100 24" preserveAspectRatio="none">
+                                <path d="M0,14 C25,5 45,22 70,9 C85,4 92,15 100,7 L100,24 L0,24 Z" fill="rgba(139,92,246,0.12)"/>
+                                <path d="M0,14 C25,5 45,22 70,9 C85,4 92,15 100,7" fill="none" stroke="#8b5cf6" stroke-width="2"/>
+                            </svg>
+                        </div>
+
+                        <div class="pd_kpi_card_v2 pd_kpi_v2_green pd_row_clickable" t-on-click="() => this.openTaskCategory('active')">
+                            <div class="pd_kpi_v2_top">
+                                <div class="pd_kpi_v2_icon"><i class="fa fa-play"/></div>
+                                <div class="pd_kpi_v2_info">
+                                    <span class="pd_kpi_v2_label">Active Tasks</span>
+                                    <div class="pd_kpi_v2_value"><t t-esc="state.data.kpis.active_tasks"/></div>
+                                </div>
+                                <div t-att-class="'pd_kpi_v2_trend ' + state.data.kpis.active_tasks_trend_class" t-att-title="state.data.kpis.active_tasks_trend_title">
+                                    <i t-att-class="'fa ' + state.data.kpis.active_tasks_trend_icon"/> <t t-esc="state.data.kpis.active_tasks_trend"/>
+                                </div>
+                            </div>
+                            <svg class="pd_kpi_v2_wave" viewBox="0 0 100 24" preserveAspectRatio="none">
+                                <path d="M0,14 C25,4 45,20 70,8 C85,3 92,14 100,6 L100,24 L0,24 Z" fill="rgba(34,197,94,0.12)"/>
+                                <path d="M0,14 C25,4 45,20 70,8 C85,3 92,14 100,6" fill="none" stroke="#22c55e" stroke-width="2"/>
+                            </svg>
+                        </div>
+
+                        <div class="pd_kpi_card_v2 pd_kpi_v2_blue pd_row_clickable" t-on-click="() => this.openTaskCategory('planning')">
+                            <div class="pd_kpi_v2_top">
+                                <div class="pd_kpi_v2_icon"><i class="fa fa-lightbulb-o"/></div>
+                                <div class="pd_kpi_v2_info">
+                                    <span class="pd_kpi_v2_label">In Planning</span>
+                                    <div class="pd_kpi_v2_value"><t t-esc="state.data.kpis.planning_tasks"/></div>
+                                </div>
+                                <div t-att-class="'pd_kpi_v2_trend ' + state.data.kpis.planning_tasks_trend_class" t-att-title="state.data.kpis.planning_tasks_trend_title">
+                                    <i t-att-class="'fa ' + state.data.kpis.planning_tasks_trend_icon"/> <t t-esc="state.data.kpis.planning_tasks_trend"/>
+                                </div>
+                            </div>
+                            <svg class="pd_kpi_v2_wave" viewBox="0 0 100 24" preserveAspectRatio="none">
+                                <path d="M0,15 C25,5 45,22 70,10 C85,4 92,16 100,8 L100,24 L0,24 Z" fill="rgba(59,130,246,0.12)"/>
+                                <path d="M0,15 C25,5 45,22 70,10 C85,4 92,16 100,8" fill="none" stroke="#3b82f6" stroke-width="2"/>
+                            </svg>
+                        </div>
+
+                        <div class="pd_kpi_card_v2 pd_kpi_v2_orange pd_row_clickable" t-on-click="() => this.openTaskCategory('rework')">
+                            <div class="pd_kpi_v2_top">
+                                <div class="pd_kpi_v2_icon"><i class="fa fa-refresh"/></div>
+                                <div class="pd_kpi_v2_info">
+                                    <span class="pd_kpi_v2_label">In Re-Work</span>
+                                    <div class="pd_kpi_v2_value"><t t-esc="state.data.kpis.rework_tasks"/></div>
+                                </div>
+                                <div t-att-class="'pd_kpi_v2_trend ' + state.data.kpis.rework_tasks_trend_class" t-att-title="state.data.kpis.rework_tasks_trend_title">
+                                    <i t-att-class="'fa ' + state.data.kpis.rework_tasks_trend_icon"/> <t t-esc="state.data.kpis.rework_tasks_trend"/>
+                                </div>
+                            </div>
+                            <svg class="pd_kpi_v2_wave" viewBox="0 0 100 24" preserveAspectRatio="none">
+                                <path d="M0,16 C25,12 50,18 75,14 C88,11 95,15 100,12 L100,24 L0,24 Z" fill="rgba(245,158,11,0.12)"/>
+                                <path d="M0,16 C25,12 50,18 75,14 C88,11 95,15 100,12" fill="none" stroke="#f59e0b" stroke-width="2"/>
+                            </svg>
+                        </div>
+
+                        <div class="pd_kpi_card_v2 pd_kpi_v2_teal pd_row_clickable" t-on-click="() => this.openTaskCategory('completed')">
+                            <div class="pd_kpi_v2_top">
+                                <div class="pd_kpi_v2_icon"><i class="fa fa-check-circle"/></div>
+                                <div class="pd_kpi_v2_info">
+                                    <span class="pd_kpi_v2_label">Completed Tasks</span>
+                                    <div class="pd_kpi_v2_value text-success"><t t-esc="state.data.kpis.completed_tasks"/></div>
+                                </div>
+                                <div t-att-class="'pd_kpi_v2_trend ' + state.data.kpis.completed_tasks_trend_class" t-att-title="state.data.kpis.completed_tasks_trend_title">
+                                    <i t-att-class="'fa ' + state.data.kpis.completed_tasks_trend_icon"/> <t t-esc="state.data.kpis.completed_tasks_trend"/>
+                                </div>
+                            </div>
+                            <svg class="pd_kpi_v2_wave" viewBox="0 0 100 24" preserveAspectRatio="none">
+                                <path d="M0,16 C30,10 60,18 80,12 C90,9 96,14 100,12 L100,24 L0,24 Z" fill="rgba(6,182,212,0.12)"/>
+                                <path d="M0,16 C30,10 60,18 80,12 C90,9 96,14 100,12" fill="none" stroke="#06b6d4" stroke-width="2"/>
+                            </svg>
+                        </div>
+
+                        <div class="pd_kpi_card_v2 pd_kpi_v2_crimson pd_row_clickable" t-on-click="() => this.openTaskCategory('overdue')">
+                            <div class="pd_kpi_v2_top">
+                                <div class="pd_kpi_v2_icon"><i class="fa fa-clock-o"/></div>
+                                <div class="pd_kpi_v2_info">
+                                    <span class="pd_kpi_v2_label">Overdue Tasks</span>
+                                    <div class="pd_kpi_v2_value text-danger"><t t-esc="state.data.kpis.overdue_tasks"/></div>
+                                </div>
+                                <div t-att-class="'pd_kpi_v2_trend ' + state.data.kpis.overdue_tasks_trend_class" t-att-title="state.data.kpis.overdue_tasks_trend_title">
+                                    <i t-att-class="'fa ' + state.data.kpis.overdue_tasks_trend_icon"/> <t t-esc="state.data.kpis.overdue_tasks_trend"/>
+                                </div>
+                            </div>
+                            <svg class="pd_kpi_v2_wave" viewBox="0 0 100 24" preserveAspectRatio="none">
+                                <path d="M0,15 C25,6 45,21 70,10 C85,5 92,16 100,9 L100,24 L0,24 Z" fill="rgba(225,29,72,0.12)"/>
+                                <path d="M0,15 C25,6 45,21 70,10 C85,5 92,16 100,9" fill="none" stroke="#e11d48" stroke-width="2"/>
+                            </svg>
+                        </div>
+
+                        <!-- Subtasks KPI card -->
+                        <div class="pd_kpi_card_v2 pd_kpi_v2_purple pd_row_clickable" t-on-click="() => this.openTaskCategory('subtasks')">
+                            <div class="pd_kpi_v2_top">
+                                <div class="pd_kpi_v2_icon"><i class="fa fa-sitemap"/></div>
+                                <div class="pd_kpi_v2_info">
+                                    <span class="pd_kpi_v2_label">Subtasks</span>
+                                    <div class="pd_kpi_v2_value"><t t-esc="state.data.kpis.total_subtasks"/></div>
+                                </div>
+                                <div t-att-class="'pd_kpi_v2_trend ' + state.data.kpis.total_subtasks_trend_class" t-att-title="state.data.kpis.total_subtasks_trend_title">
+                                    <i t-att-class="'fa ' + state.data.kpis.total_subtasks_trend_icon"/> <t t-esc="state.data.kpis.total_subtasks_trend"/>
+                                </div>
+                            </div>
+                            <svg class="pd_kpi_v2_wave" viewBox="0 0 100 24" preserveAspectRatio="none">
+                                <path d="M0,14 C25,5 45,22 70,9 C85,4 92,15 100,7 L100,24 L0,24 Z" fill="rgba(139,92,246,0.12)"/>
+                                <path d="M0,14 C25,5 45,22 70,9 C85,4 92,15 100,7" fill="none" stroke="#8b5cf6" stroke-width="2"/>
+                            </svg>
+                        </div>
+
+                        <!-- Timesheet hours logged by each person across this project -->
+                        <div class="pd_kpi_card_v2 pd_kpi_v2_teal pd_row_clickable" t-on-click="openProjectTimesheets">
+                            <div class="pd_kpi_v2_top">
+                                <div class="pd_kpi_v2_icon"><i class="fa fa-clock-o"/></div>
+                                <div class="pd_kpi_v2_info">
+                                    <span class="pd_kpi_v2_label">Timesheet Hours</span>
+                                    <div class="pd_kpi_v2_value"><t t-esc="state.data.kpis.total_timesheet_hours"/> h</div>
+                                </div>
+                                <div class="pd_kpi_v2_trend pd_trend_neutral">
+                                    <i class="fa fa-users"/> <t t-esc="state.data.kpis.timesheet_people_count"/>
+                                </div>
+                            </div>
+                            <div class="pd_timesheet_kpi_people">
+                                <t t-if="!state.data.timesheet_by_person || !state.data.timesheet_by_person.length">
+                                    <span>No hours logged yet</span>
                                 </t>
-                            </tbody>
-                        </table>
+                                <t t-foreach="(state.data.timesheet_by_person || []).slice(0, 3)" t-as="person" t-key="person_index">
+                                    <div class="pd_timesheet_kpi_person">
+                                        <span t-esc="person.name"/>
+                                        <strong><t t-esc="person.hours"/> h</strong>
+                                    </div>
+                                </t>
+                                <span t-if="state.data.timesheet_people_count > 3" class="pd_timesheet_kpi_more">Click to view all contributors</span>
+                            </div>
+                            <svg class="pd_kpi_v2_wave" viewBox="0 0 100 24" preserveAspectRatio="none">
+                                <path d="M0,15 C25,8 45,20 70,9 C85,5 92,16 100,8 L100,24 L0,24 Z" fill="rgba(6,182,212,0.12)"/>
+                                <path d="M0,15 C25,8 45,20 70,9 C85,5 92,16 100,8" fill="none" stroke="#06b6d4" stroke-width="2"/>
+                            </svg>
+                        </div>
+
+                        <!-- ── Chart: SDLC Phases · Tasks by Stage ── -->
+                    </div>
+                    <div class="pd_internal_charts_row">
+                        <div class="pd_chart_card_v2">
+                            <div class="pd_chart_header_v2">
+                                <div class="pd_card_title_v2"><i class="fa fa-pie-chart text-purple me-2"/>SDLC Phases · Tasks by Stage</div>
+                                <span class="pd_view_link" t-on-click="() => this.openTasks([['project_id','=',state.selectedProjectId]], 'All Tasks')">View Details <i class="fa fa-arrow-right ms-1"/></span>
+                            </div>
+                            <div class="pd_donut_wrapper">
+                                <canvas t-ref="chartDetailTaskStage" class="pd_canvas"/>
+                                <div class="pd_donut_center_text">
+                                    <div class="pd_donut_center_value"><t t-esc="state.data.sdlc_phases_total_tasks || state.data.project.total_tasks"/></div>
+                                    <div class="pd_donut_center_label">Tasks</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="pd_chart_card_v2 pd_overall_plan_card">
+                            <div class="pd_chart_header_v2">
+                                <div class="pd_card_title_v2"><i class="fa fa-calendar-check-o text-success me-2"/>Overall Planned vs Completed</div>
+                                <span class="pd_view_link" t-on-click="openPlannedTasks" title="Click to view all planned tasks" style="cursor: pointer;">View Planned (<t t-esc="state.data.project.total_tasks || 0"/>) <i class="fa fa-arrow-right ms-1"/></span>
+                            </div>
+                            <div class="pd_donut_wrapper pd_overall_donut_wrapper">
+                                <canvas t-ref="chartOverallPlan" class="pd_canvas"/>
+                                <div class="pd_donut_center_text pd_row_clickable" t-on-click="openCompletedTasks" title="Click to view completed tasks" style="cursor: pointer;">
+                                    <div class="pd_donut_center_value"><t t-esc="state.data.project.done_tasks || 0"/> / <t t-esc="state.data.project.total_tasks || 0"/></div>
+                                    <div class="pd_donut_center_label">Completed</div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
-                    <!-- 4. Timesheet by Task -->
-                    <div class="pd_table_card ppd_timesheet_card">
-                        <div class="pd_card_title">Timesheet by Task</div>
-                        <table class="pd_table mt-2">
-                            <thead>
-                                <tr>
-                                    <th>Task</th>
-                                    <th>Allocated</th>
-                                    <th>Time Taken</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <t t-if="!state.data.task_timesheets || state.data.task_timesheets.length === 0">
+                    <!-- ── Middle Row 2: Key Milestones / Phases, Resource Utilization, Daily Tasks ── -->
+                    <div class="pd_internal_mid_grid">
+                        <!-- SDLC Phases sourced from task stages -->
+                        <div class="pd_table_card_v2">
+                            <div class="pd_chart_header_v2">
+                                <div class="pd_card_title_v2"><i class="fa fa-code-fork text-primary me-2"/>Phases</div>
+                                <span t-if="state.data.sdlc_phases_total > 5" class="pd_view_link" t-on-click="toggleAllPhases">
+                                    <t t-esc="state.showAllPhases ? 'Show Less' : 'View All Phases'"/>
+                                </span>
+                            </div>
+                            <div class="ppd_milestone_list">
+                                <t t-if="!state.data.sdlc_phases || state.data.sdlc_phases.length === 0">
+                                    <div class="pd_empty_v2">No SDLC phases found for this project</div>
+                                </t>
+                                <t t-foreach="state.showAllPhases ? state.data.sdlc_phases : (state.data.sdlc_phases_preview || [])" t-as="phase" t-key="phase_index">
+                                    <div class="ppd_milestone_row">
+                                        <div class="ppd_milestone_dot" t-att-class="phase.progress === 100 ? 'ppd_dot_reached' : (phase.progress > 0 ? 'ppd_dot_active' : '')"/>
+                                        <span class="ppd_milestone_name text-truncate" t-att-title="phase.phase"><t t-esc="phase.phase"/><small class="text-muted ms-1">(<t t-esc="phase.task_count"/>)</small></span>
+                                        <div class="ppd_milestone_bar_wrap flex-grow-1 mx-2">
+                                            <div class="pd_bar_track_v2">
+                                                <div class="pd_bar_fill_v2 pd_fill_blue" t-att-style="'width: ' + phase.progress + '%'"/>
+                                            </div>
+                                        </div>
+                                        <span class="pd_bar_pct_v2"><t t-esc="phase.progress"/>%</span>
+                                    </div>
+                                </t>
+                            </div>
+                        </div>
+
+                        <!-- Resource Utilization on this project -->
+                        <div class="pd_table_card_v2">
+                            <div class="pd_chart_header_v2">
+                                <div class="pd_card_title_v2"><i class="fa fa-users text-primary me-2"/>Resource Utilization</div>
+                                <span class="pd_view_link" t-on-click="() => this.openTasks([['project_id','=',state.selectedProjectId]], 'Assigned Tasks')">View All <i class="fa fa-arrow-right ms-1"/></span>
+                            </div>
+                            <div class="pd_util_list">
+                                <t t-if="!state.data.resource_utilization || state.data.resource_utilization.length === 0">
+                                    <div class="pd_empty_v2">No team member assigned yet</div>
+                                </t>
+                                <t t-foreach="state.data.resource_utilization || []" t-as="res" t-key="res.name">
+                                    <div class="pd_util_row">
+                                        <div class="pd_util_name"><t t-esc="res.name"/></div>
+                                        <div class="pd_bar_wrap_v2 flex-grow-1 mx-2">
+                                            <div class="pd_bar_track_v2">
+                                                <div t-att-class="'pd_bar_fill_v2 ' + (res_index % 4 === 0 ? 'pd_fill_blue' : res_index % 4 === 1 ? 'pd_fill_green' : res_index % 4 === 2 ? 'pd_fill_orange' : 'pd_fill_purple')" t-att-style="'width: ' + res.utilization + '%'"/>
+                                            </div>
+                                        </div>
+                                        <span class="pd_util_pct"><t t-esc="res.utilization"/>%</span>
+                                    </div>
+                                </t>
+                            </div>
+                        </div>
+
+                        <!-- Daily Tasks for this project -->
+                        <div class="pd_table_card_v2">
+                            <div class="pd_chart_header_v2">
+                                <div class="pd_card_title_v2"><i class="fa fa-calendar-check-o text-primary me-2"/>Daily Tasks</div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="badge bg-primary-subtle text-primary rounded-pill px-2 py-1 fw-bold">
+                                        <t t-esc="state.data.daily_tasks_total || (state.data.daily_tasks ? state.data.daily_tasks.length : 0)"/> Total
+                                    </span>
+                                    <span t-if="state.data.daily_logs_enabled" class="pd_view_link" t-on-click="openDailyLogs">View All <i class="fa fa-arrow-right ms-1"/></span>
+                                </div>
+                            </div>
+                            <div class="pd_daily_tasks_list">
+                                <t t-if="!state.data.daily_tasks || state.data.daily_tasks.length === 0">
+                                    <div class="pd_empty_v2" t-esc="state.data.daily_logs_enabled ? 'No daily logs in this date range' : 'Daily Logs module is not installed'"/>
+                                </t>
+                                <t t-foreach="state.data.daily_tasks || []" t-as="task" t-key="task.id">
+                                    <div class="pd_daily_task_row pd_row_clickable" t-on-click="() => this.openDailyLog(task.id)">
+                                        <div class="d-flex align-items-center flex-grow-1 overflow-hidden me-2">
+                                            <i t-att-class="task.is_done ? 'fa fa-check-circle text-success me-2' : 'fa fa-circle-o text-purple me-2'"/>
+                                            <div class="overflow-hidden">
+                                                <span class="pd_daily_task_title text-truncate d-block" t-att-title="task.name"><t t-esc="task.name"/></span>
+                                                <small class="text-muted text-truncate d-block"><t t-esc="task.task_name"/> · <t t-esc="task.logged_by"/></small>
+                                            </div>
+                                        </div>
+                                        <span class="pd_daily_time_badge">
+                                            <i class="fa fa-calendar me-1"/> <t t-esc="task.date"/>
+                                        </span>
+                                    </div>
+                                </t>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ── Middle Row 3: Main Tasks & Subtasks + SDLC Workflow & Stage Tracking ── -->
+                    <div class="pd_internal_bottom_grid">
+                        <!-- Main Tasks & Subtasks (Separated) -->
+                        <div class="pd_table_card_v2">
+                            <div class="pd_chart_header_v2">
+                                <div class="pd_card_title_v2"><i class="fa fa-check-square-o text-primary me-2"/>Main Tasks &amp; Subtasks</div>
+                                <span class="pd_view_link" t-on-click="() => this.openTasks([['project_id','=',state.selectedProjectId],['parent_id','=',false]], 'All Tasks')">
+                                    View All (<t t-esc="state.data.main_tasks_total || (state.data.main_and_subtasks ? state.data.main_and_subtasks.length : 0)"/>) <i class="fa fa-arrow-right ms-1"/>
+                                </span>
+                            </div>
+                            <table class="pd_table_v2">
+                                <thead>
                                     <tr>
-                                        <td colspan="4" class="pd_empty">No timesheet logged</td>
+                                        <th>Main Task</th>
+                                        <th>Subtasks</th>
+                                        <th>Progress</th>
+                                        <th>Status</th>
+                                        <th>Due Date</th>
                                     </tr>
-                                </t>
-                                <t t-foreach="state.data.task_timesheets || []" t-as="tts" t-key="tts.task_id">
-                                    <tr class="pd_row_clickable" t-on-click="() => this.openTask(tts.task_id)">
-                                        <td><t t-esc="tts.task_name"/></td>
-                                        <td><t t-esc="tts.allocated_hours"/> h</td>
-                                        <td class="fw-bold"><t t-esc="tts.total_hours"/> h</td>
-                                        <td>
-                                            <span t-att-class="'badge bg-' + tts.status_color"><t t-esc="tts.status"/></span>
-                                        </td>
+                                </thead>
+                                <tbody>
+                                    <t t-if="!state.data.main_and_subtasks || state.data.main_and_subtasks.length === 0">
+                                        <tr><td colspan="5" class="pd_empty_v2">No tasks in this project</td></tr>
+                                    </t>
+                                    <t t-foreach="state.data.main_and_subtasks || []" t-as="mt" t-key="mt.id">
+                                        <tr class="pd_row_clickable" t-on-click="() => this.openTask(mt.id)">
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <i t-att-class="'fa me-2 text-muted ' + (state.expandedTasks and state.expandedTasks[mt.id] ? 'fa-chevron-down text-primary' : 'fa-chevron-right')" t-on-click.stop="() => this.toggleSubtasks(mt.id)" style="font-size: 11px; cursor: pointer;"/>
+                                                    <span class="fw-bold text-dark"><t t-esc="mt.name"/></span>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-light text-dark border px-2 py-1"><t t-esc="mt.subtask_str"/></span>
+                                            </td>
+                                            <td style="width: 25%;">
+                                                <div class="pd_bar_wrap_v2">
+                                                    <div class="pd_bar_track_v2">
+                                                        <div t-att-class="'pd_bar_fill_v2 ' + (mt.progress === 100 ? 'pd_fill_green' : mt.progress >= 50 ? 'pd_fill_blue' : 'pd_fill_orange')" t-att-style="'width: ' + mt.progress + '%'"/>
+                                                    </div>
+                                                    <span class="pd_bar_pct_v2"><t t-esc="mt.progress"/>%</span>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span t-att-class="'pd_status_badge ' + (mt.status === 'Completed' ? 'pd_status_completed' : mt.status === 'In Progress' ? 'pd_status_inprogress' : mt.status === 'Planning' ? 'pd_status_planning' : mt.status === 'Re-Work' ? 'pd_status_rework' : 'pd_status_notstarted')">
+                                                    <t t-esc="mt.status"/>
+                                                </span>
+                                            </td>
+                                            <td class="text-muted"><t t-esc="mt.due_date"/></td>
+                                        </tr>
+                                        <!-- Separated Subtasks Accordion -->
+                                        <t t-if="state.expandedTasks and state.expandedTasks[mt.id]">
+                                            <t t-foreach="mt.subtasks || []" t-as="st" t-key="st.id">
+                                                <tr class="pd_subtask_row" t-on-click="() => this.openTask(st.id)">
+                                                    <td colspan="2" class="ps-4">
+                                                        <i class="fa fa-level-up fa-rotate-90 me-2 text-muted"/>
+                                                        <span class="text-secondary"><t t-esc="st.name"/></span>
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge bg-light text-muted border"><t t-esc="st.stage"/></span>
+                                                    </td>
+                                                    <td>
+                                                        <span t-if="st.is_done" class="badge bg-success-subtle text-success"><i class="fa fa-check me-1"/>Done</span>
+                                                        <span t-else="" class="badge bg-light text-secondary">In Progress</span>
+                                                    </td>
+                                                    <td class="text-muted"><t t-esc="st.deadline || 'No deadline'"/></td>
+                                                </tr>
+                                            </t>
+                                        </t>
+                                    </t>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- SDLC Workflow & Stage Tracking for this project (highlighting Planning & Re-Work) -->
+                        <div class="pd_table_card_v2">
+                            <div class="pd_chart_header_v2">
+                                <div class="pd_card_title_v2"><i class="fa fa-code-fork text-primary me-2"/>SDLC Workflow &amp; Stage Tracking</div>
+                                <span t-if="state.data.sdlc_phases_total > 5" class="pd_view_link" t-on-click="toggleAllPhases">
+                                    <t t-esc="state.showAllPhases ? 'Show Less' : 'View All Phases'"/> <i class="fa fa-arrow-right ms-1"/>
+                                </span>
+                            </div>
+                            <table class="pd_table_v2">
+                                <thead>
+                                    <tr>
+                                        <th>SDLC Phase</th>
+                                        <th>Tasks</th>
+                                        <th>Progress</th>
+                                        <th>Status</th>
+                                        <th>Target Date</th>
                                     </tr>
-                                </t>
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    <t t-if="!state.data.sdlc_phases || state.data.sdlc_phases.length === 0">
+                                        <tr><td colspan="5" class="pd_empty_v2">No SDLC pipeline records found</td></tr>
+                                    </t>
+                                    <t t-foreach="state.showAllPhases ? state.data.sdlc_phases : (state.data.sdlc_phases_preview || [])" t-as="sdlc" t-key="sdlc_index">
+                                        <tr>
+                                            <td>
+                                                <span t-att-class="'pd_sdlc_phase_badge ' + (sdlc.is_rework ? 'pd_phase_rework' : sdlc.is_planning ? 'pd_phase_planning' : sdlc.phase.toLowerCase().includes('test') ? 'pd_phase_testing' : sdlc.phase.toLowerCase().includes('dev') ? 'pd_phase_dev' : 'pd_phase_impl')">
+                                                    <t t-esc="sdlc.phase"/>
+                                                </span>
+                                            </td>
+                                            <td class="fw-bold"><t t-esc="sdlc.task_count"/></td>
+                                            <td style="width: 25%;">
+                                                <div class="pd_bar_wrap_v2">
+                                                    <div class="pd_bar_track_v2">
+                                                        <div t-att-class="'pd_bar_fill_v2 ' + (sdlc.is_rework ? 'pd_fill_red' : sdlc.is_planning ? 'pd_fill_cyan' : 'pd_fill_blue')" t-att-style="'width: ' + sdlc.progress + '%'"/>
+                                                    </div>
+                                                    <span class="pd_bar_pct_v2"><t t-esc="sdlc.progress"/>%</span>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span t-att-class="'pd_status_badge ' + (sdlc.is_rework ? 'pd_status_rework' : sdlc.status === 'Completed' || sdlc.status === 'Verified' ? 'pd_status_completed' : sdlc.status === 'In Progress' || sdlc.status === 'In Review' ? 'pd_status_inprogress' : 'pd_status_planning')">
+                                                    <t t-esc="sdlc.status"/>
+                                                </span>
+                                            </td>
+                                            <td class="text-muted"><t t-esc="sdlc.due_date"/></td>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
 
-                </div>
+                    <!-- ── Bottom Row: 4 Cards (Screenshot 2 style) ── -->
+                    <div class="pd_internal_bottom_cards_grid">
+                        <!-- 1. Recently Created Tasks -->
+                        <div class="pd_mini_card_v2">
+                            <div class="pd_mini_card_header">
+                                <div class="pd_mini_card_title">
+                                    <i class="fa fa-calendar-plus-o text-primary me-2"/> Recently Created Tasks
+                                </div>
+                                <span class="pd_view_link" t-on-click="() => this.openTasks([['project_id','=',state.selectedProjectId]], 'Recent Tasks')">View All <i class="fa fa-arrow-right ms-1"/></span>
+                            </div>
+                            <div class="pd_mini_card_body">
+                                <t t-if="!state.data.recent_activities || state.data.recent_activities.length === 0">
+                                    <div class="pd_empty_v2">No recent tasks</div>
+                                </t>
+                                <t t-foreach="state.data.recent_activities || []" t-as="item" t-key="item.id">
+                                    <div class="pd_mini_item pd_row_clickable" t-on-click="() => this.openTask(item.id)">
+                                        <div class="d-flex align-items-center overflow-hidden flex-grow-1 me-2">
+                                            <span class="pd_bullet_purple me-2"/>
+                                            <span class="pd_mini_text text-truncate" t-att-title="item.name"><t t-esc="item.name"/></span>
+                                        </div>
+                                        <span class="pd_mini_time text-nowrap"><t t-esc="item.time_ago"/> <i class="fa fa-chevron-right ms-1"/></span>
+                                    </div>
+                                </t>
+                            </div>
+                        </div>
+
+                        <!-- 2. Upcoming Deadlines -->
+                        <div class="pd_mini_card_v2">
+                            <div class="pd_mini_card_header">
+                                <div class="pd_mini_card_title">
+                                    <i class="fa fa-clock-o text-danger me-2"/> Upcoming Deadlines
+                                </div>
+                                <span class="pd_view_link" t-on-click="onKpiTotalTasksClick">View All <i class="fa fa-arrow-right ms-1"/></span>
+                            </div>
+                            <div class="pd_mini_card_body">
+                                <t t-if="!state.data.upcoming_deadlines || state.data.upcoming_deadlines.length === 0">
+                                    <div class="pd_empty_v2">No upcoming deadlines</div>
+                                </t>
+                                <t t-foreach="state.data.upcoming_deadlines || []" t-as="item" t-key="item.id">
+                                    <div class="pd_mini_item pd_row_clickable" t-on-click="() => this.openTask(item.id)">
+                                        <div class="d-flex align-items-center overflow-hidden flex-grow-1 me-2">
+                                            <i class="fa fa-calendar text-danger me-2" style="font-size: 13px;"/>
+                                            <span class="pd_mini_text text-truncate" t-att-title="item.name"><t t-esc="item.name"/></span>
+                                        </div>
+                                        <span class="pd_mini_time text-nowrap"><t t-esc="item.deadline"/> <i class="fa fa-chevron-right ms-1"/></span>
+                                    </div>
+                                </t>
+                            </div>
+                        </div>
+
+                        <!-- 3. Overdue Tasks -->
+                        <div class="pd_mini_card_v2">
+                            <div class="pd_mini_card_header">
+                                <div class="pd_mini_card_title">
+                                    <i class="fa fa-exclamation-triangle text-warning me-2"/> Overdue Tasks
+                                </div>
+                                <span class="pd_view_link" t-on-click="onKpiOverdueTasksClick">View All <i class="fa fa-arrow-right ms-1"/></span>
+                            </div>
+                            <div class="pd_mini_card_body">
+                                <t t-if="!state.data.overdue_task_data || state.data.overdue_task_data.length === 0">
+                                    <div class="pd_empty_v2 text-success"><i class="fa fa-check me-1"/>No overdue tasks!</div>
+                                </t>
+                                <t t-foreach="state.data.overdue_task_data || []" t-as="item" t-key="item.id">
+                                    <div class="pd_mini_item pd_row_clickable" t-on-click="() => this.openTask(item.id)">
+                                        <div class="d-flex align-items-center overflow-hidden flex-grow-1 me-2">
+                                            <span class="pd_bullet_red me-2"/>
+                                            <span class="pd_mini_text text-truncate" t-att-title="item.name"><t t-esc="item.name"/></span>
+                                        </div>
+                                        <span class="pd_mini_time text-danger text-nowrap"><t t-esc="item.time_ago"/> <i class="fa fa-chevron-right ms-1"/></span>
+                                    </div>
+                                </t>
+                            </div>
+                        </div>
+
+                        <!-- 4. Alerts -->
+                        <div class="pd_mini_card_v2">
+                            <div class="pd_mini_card_header">
+                                <div class="pd_mini_card_title">
+                                    <i class="fa fa-bell text-primary me-2"/> Alerts
+                                </div>
+                            </div>
+                            <div class="pd_mini_card_body">
+                                <t t-if="!state.data.alerts || state.data.alerts.length === 0">
+                                    <div class="pd_empty_v2 text-success"><i class="fa fa-check-circle me-1"/>All systems normal</div>
+                                </t>
+                                <t t-foreach="state.data.alerts || []" t-as="item" t-key="item_index">
+                                    <div class="pd_alert_banner">
+                                        <div class="d-flex align-items-center">
+                                            <i class="fa fa-exclamation-triangle text-danger me-2"/>
+                                            <span class="fw-semibold text-danger"><t t-esc="item.message"/></span>
+                                        </div>
+                                    </div>
+                                </t>
+                            </div>
+                        </div>
+                    </div>
+                </t>
 
             </t>
         </div>
