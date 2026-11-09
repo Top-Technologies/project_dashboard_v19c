@@ -1,4 +1,4 @@
-from odoo import models, fields,api
+from odoo import models, fields, api
 
 
 class ProjectRiskIssue(models.Model):
@@ -42,12 +42,35 @@ class ProjectRiskIssue(models.Model):
     assigned_user_id = fields.Many2one('res.users', string='Assigned To')
     mitigation_plan = fields.Text(string='Mitigation / Resolution Plan')
     target_date = fields.Date(string='Target Resolution Date')
-    submitted_date = fields.Date(string='Submitted Date', default=fields.Date.context_today,required=True,)
+    submitted_date = fields.Date(string='Submitted Date', default=fields.Date.context_today, required=True)
+    closed_date = fields.Date(string='Closed Date')
 
-    closed_date = fields.Date(string='Closed Date' )
+    @api.model
+    def _register_hook(self):
+        super()._register_hook()
+        self._ensure_columns_exist()
+
+    def init(self):
+        super().init()
+        self._ensure_columns_exist()
+
+    @api.model
+    def _ensure_columns_exist(self):
+        try:
+            self.env.cr.execute("""
+                ALTER TABLE project_risk_issue 
+                ADD COLUMN IF NOT EXISTS submitted_date date,
+                ADD COLUMN IF NOT EXISTS closed_date date;
+                UPDATE project_risk_issue 
+                SET submitted_date = COALESCE(submitted_date, create_date::date, CURRENT_DATE) 
+                WHERE submitted_date IS NULL;
+            """)
+        except Exception:
+            pass
 
     @api.model_create_multi
     def create(self, vals_list):
+        self._ensure_columns_exist()
         for vals in vals_list:
             if not vals.get('submitted_date'):
                 vals['submitted_date'] = fields.Date.context_today(self)
@@ -58,6 +81,7 @@ class ProjectRiskIssue(models.Model):
         return super().create(vals_list)
 
     def write(self, vals):
+        self._ensure_columns_exist()
         if 'status' in vals:
             vals = dict(vals)
 

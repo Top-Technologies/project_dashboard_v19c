@@ -1836,6 +1836,17 @@ class ProjectDashboardController(http.Controller):
             })
 
         RiskIssue = request.env['project.risk.issue'].sudo()
+        try:
+            request.env.cr.execute("""
+                ALTER TABLE project_risk_issue 
+                ADD COLUMN IF NOT EXISTS submitted_date date,
+                ADD COLUMN IF NOT EXISTS closed_date date;
+                UPDATE project_risk_issue 
+                SET submitted_date = COALESCE(submitted_date, create_date::date, CURRENT_DATE) 
+                WHERE submitted_date IS NULL;
+            """)
+        except Exception:
+            pass
 
         risk_issue_records = RiskIssue.search([('project_id', '=', project.id)], order='severity desc, create_date desc')
 
