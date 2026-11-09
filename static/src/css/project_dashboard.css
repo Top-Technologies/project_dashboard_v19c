@@ -9,6 +9,11 @@
     max-height: 100vh;
 }
 
+/* Keep only the internal dashboard grids from expanding the page width. */
+.o_project_dashboard:has(.pd_internal_kpi_grid) {
+    overflow-x: hidden;
+}
+
 /* Make sure the client action wrapper Odoo gives us actually lets the
    dashboard scroll instead of clipping it. Odoo's .o_action_manager /
    .o_content wrappers are flex containers without their own scroll,
@@ -1074,19 +1079,38 @@
 .pd_internal_kpi_grid,
 .pd_internal_kpi_grid_8 {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));
+    grid-template-columns: repeat(6, minmax(0, 1fr));
     gap: 12px;
     margin-bottom: 20px;
 }
 
-@media (max-width: 768px) {
+.pd_internal_kpi_grid > *,
+.pd_internal_kpi_grid_8 > * {
+    min-width: 0;
+}
+
+@media (max-width: 1400px) {
     .pd_internal_kpi_grid,
     .pd_internal_kpi_grid_8 {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(4, minmax(0, 1fr));
     }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 992px) {
+    .pd_internal_kpi_grid,
+    .pd_internal_kpi_grid_8 {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 600px) {
+    .pd_internal_kpi_grid,
+    .pd_internal_kpi_grid_8 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 400px) {
     .pd_internal_kpi_grid,
     .pd_internal_kpi_grid_8 {
         grid-template-columns: 1fr;
@@ -1230,9 +1254,18 @@
 /*    Middle Row 1: Charts (Bar chart removed!)    */
 .pd_internal_charts_row {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 16px;
     margin-bottom: 20px;
+}
+
+.pd_internal_charts_row > *,
+.pd_internal_mid_grid > *,
+.pd_internal_bottom_grid > *,
+.pd_internal_bottom_cards_grid > *,
+.pd_table_card_v2,
+.pd_chart_card_v2 {
+    min-width: 0;
 }
 
 @media (max-width: 992px) {
@@ -1315,7 +1348,7 @@
 /*    Middle Row 2: Top 5 Active Projects, Resource Utilization, Daily Tasks    */
 .pd_internal_mid_grid {
     display: grid;
-    grid-template-columns: 1.25fr 1fr 1fr;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.95fr) minmax(0, 1.4fr);
     gap: 16px;
     margin-bottom: 20px;
 }
@@ -1480,7 +1513,7 @@
 /*    Middle Row 3: Main Tasks & Subtasks + SDLC Workflow Tracking    */
 .pd_internal_bottom_grid {
     display: grid;
-    grid-template-columns: 1.15fr 1fr;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
     gap: 16px;
     margin-bottom: 20px;
 }
@@ -1504,7 +1537,7 @@
 /*    Bottom Row: 4 Mini Cards    */
 .pd_internal_bottom_cards_grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 14px;
     margin-bottom: 24px;
 }

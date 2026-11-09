@@ -6,15 +6,28 @@ from odoo.http import request
 
 from odoo.exceptions import AccessError
 
+SDLC_PHASE_LABELS = (
+    'New',
+    'Planning',
+    'Requirement Analysis',
+    'In Development',
+    'Testing & Review',
+    'Rework',
+    'Implemented',
+    'On Hold',
+    'Cancelled',
+)
+
 def is_task_done(t):
 
     if t.stage_id and t.stage_id.name == 'Done':
 
         return True
 
-    if t.stage_id and t.stage_id.name == 'Implemented' and t.project_id and t.project_id.x_project_type == 'internal':
-
-        return True
+    if t.stage_id:
+        project = t.project_id or (t.parent_id.project_id if t.parent_id else False)
+        if project and project.x_project_type == 'internal' and canonical_internal_stage_label(t.stage_id.name) == 'Implemented':
+            return True
 
     if hasattr(t, 'state') and t.state == '1_done':
 
@@ -23,48 +36,34 @@ def is_task_done(t):
     return False
 
 def canonical_internal_stage_label(name):
-
-    """Normalize phase labels so duplicate/case-variant stages share one bucket."""
-
+    """Map legacy task stages to one of the dashboard's SDLC buckets."""
     label = ' '.join((name or '').strip().replace('&', 'and').replace('-', ' ').lower().split())
-
     aliases = {
-
         'new': 'New',
-
         'planning': 'Planning',
-
         'requirement analysis': 'Requirement Analysis',
-
         'requirements analysis': 'Requirement Analysis',
-
         'in development': 'In Development',
-
         'development': 'In Development',
-
-        'in progress': 'In Progress',
-
+        'in progress': 'In Development',
+        'in process': 'In Development',
+        'inprocess': 'In Development',
+        'running': 'In Development',
         'testing and review': 'Testing & Review',
-
         'testing review': 'Testing & Review',
-
+        'testing': 'Testing & Review',
+        'test and review': 'Testing & Review',
         'rework': 'Rework',
-
         're work': 'Rework',
-
         'on hold': 'On Hold',
-
         'implemented': 'Implemented',
-
-        'done': 'Done',
-
+        'done': 'Implemented',
+        'complete': 'Implemented',
+        'completed': 'Implemented',
         'cancelled': 'Cancelled',
-
         'canceled': 'Cancelled',
-
     }
-
-    return aliases.get(label, (name or '').strip())
+    return aliases.get(label, 'Other')
 
 def to_date(val):
 
@@ -870,27 +869,17 @@ class ProjectDashboardController(http.Controller):
 
         for task in parent_tasks:
 
-            stage_name = canonical_internal_stage_label(task.stage_id.name if task.stage_id else 'New')
-
-            # Completion is shown in the completion chart; keep Done out of the SDLC phase chart.
-
-            if stage_name == 'Done':
-
-                continue
+            stage_name = canonical_internal_stage_label(task.stage_id.name) if task.stage_id else 'Unassigned'
 
             stage_data[stage_name] = stage_data.get(stage_name, 0) + 1
 
             stage_task_ids.setdefault(stage_name, []).append(task.id)
 
-        stage_order = ['New', 'Planning', 'Requirement Analysis', 'In Development', 'In Progress', 'Testing & Review', 'Rework', 'Implemented', 'On Hold', 'Cancelled']
+        # Only the configured SDLC phases belong in this chart. Keep legacy,
+        # unrelated, and unassigned stages out of both the legend and totals.
+        stage_order = list(SDLC_PHASE_LABELS)
 
-        for s in stage_data:
-
-            if s not in stage_order:
-
-                stage_order.append(s)
-
-        tot_sdlc_cnt = sum(stage_data.values()) or 1
+        tot_sdlc_cnt = sum(stage_data.get(stage, 0) for stage in stage_order) or 1
 
         tasks_by_stage = [
 
@@ -906,7 +895,7 @@ class ProjectDashboardController(http.Controller):
 
             }
 
-            for s in stage_order if stage_data.get(s, 0) > 0
+            for s in stage_order
 
         ]
 
@@ -1048,7 +1037,7 @@ class ProjectDashboardController(http.Controller):
 
                 status_color = 'primary'
 
-            elif task.stage_id and 'plan' in task.stage_id.name.lower():
+            elif task.stage_id and canonical_internal_stage_label(task.stage_id.name) == 'Planning':
 
                 status_label = 'Planning'
 
@@ -1176,7 +1165,7 @@ class ProjectDashboardController(http.Controller):
 
                 })
 
-            pl_tasks = p_t.filtered(lambda t: t.stage_id and 'plan' in t.stage_id.name.lower())
+            pl_tasks = p_t.filtered(lambda t: t.stage_id and canonical_internal_stage_label(t.stage_id.name) == 'Planning')
 
             if pl_tasks:
 
@@ -1508,7 +1497,7 @@ class ProjectDashboardController(http.Controller):
             'projects_by_status': projects_by_status,
 
             'tasks_by_stage': tasks_by_stage,
-            'sdlc_phases_total_tasks': sum(stage_data.values()),
+            'sdlc_phases_total_tasks': sum(stage_data.get(stage, 0) for stage in SDLC_PHASE_LABELS),
 
             'project_progress': [],
 
@@ -2275,7 +2264,7 @@ class ProjectDashboardController(http.Controller):
 
                 status_color = 'primary'
 
-            elif task.stage_id and 'plan' in task.stage_id.name.lower():
+            elif task.stage_id and canonical_internal_stage_label(task.stage_id.name) == 'Planning':
 
                 status_label = 'Planning'
 
@@ -2374,25 +2363,13 @@ class ProjectDashboardController(http.Controller):
 
         Stage = request.env['project.task.type'].sudo()
 
-        phase_stages = Stage.search([
-
-            ('active', '=', True),
-
-            ('user_id', '=', False),
-
-            '|', ('project_ids', '=', False), ('project_ids', 'in', [project.id]),
-
-        ], order='sequence, id')
-
-        # Retain any task stage attached to this project even if it is not in
-
-        # the project's active shared-stage configuration.
-
-        phase_stages |= parent_tasks.mapped('stage_id')
+        # Use this project's configured workflow stages, then include only
+        # stages actually used by this project's tasks. Avoid unrelated
+        # global stages from other projects (TODO, Week 1, Inbox, etc.).
+        phase_stages = project.type_ids.filtered(lambda stage: stage.active and not stage.user_id)
+        phase_stages |= all_tasks.mapped('stage_id')
 
         phase_stages = phase_stages.sorted(lambda stage: (stage.sequence, stage.id))
-
-        total_task_denominator = len(parent_tasks) or 1
 
         tasks_by_stage = []
 
@@ -2404,21 +2381,29 @@ class ProjectDashboardController(http.Controller):
 
             phase_label = canonical_internal_stage_label(stage.name)
 
-            if phase_label == 'Done':
-
-                continue
-
             # Several projects may expose shared and project-specific stages
 
             # with the same spelling/case. One canonical phase is enough.
 
-            phase_by_label.setdefault(phase_label, stage)
+            if phase_label in SDLC_PHASE_LABELS:
+                phase_by_label.setdefault(phase_label, stage)
 
-        for phase_label, stage in sorted(phase_by_label.items(), key=lambda item: (item[1].sequence, item[1].id)):
+        phase_order = list(SDLC_PHASE_LABELS)
+        for phase_label in SDLC_PHASE_LABELS:
+            phase_by_label.setdefault(phase_label, False)
+
+        sdlc_task_count = sum(
+            1 for task in parent_tasks
+            if task.stage_id and canonical_internal_stage_label(task.stage_id.name) in SDLC_PHASE_LABELS
+        ) or 1
+
+        for phase_label in phase_order:
+
+            stage = phase_by_label.get(phase_label)
 
             stage_tasks = parent_tasks.filtered(
 
-                lambda task: task.stage_id and canonical_internal_stage_label(task.stage_id.name) == phase_label
+                lambda task: (canonical_internal_stage_label(task.stage_id.name) if task.stage_id else 'Unassigned') == phase_label
 
             )
 
@@ -2434,11 +2419,11 @@ class ProjectDashboardController(http.Controller):
 
                 'label': phase_label,
 
-                'stage_id': stage.id,
+                'stage_id': stage.id if stage else False,
 
                 'count': len(stage_tasks),
 
-                'pct': round(len(stage_tasks) * 100.0 / total_task_denominator, 1),
+                'pct': round(len(stage_tasks) * 100.0 / sdlc_task_count, 1),
 
                 'task_ids': stage_tasks.ids,
 
@@ -2447,6 +2432,10 @@ class ProjectDashboardController(http.Controller):
             sdlc_phases.append({
 
                 'phase': phase_label,
+
+                'stage_id': stage.id if stage else False,
+
+                'task_ids': stage_tasks.ids,
 
                 'task_count': len(stage_tasks),
 
@@ -2458,45 +2447,7 @@ class ProjectDashboardController(http.Controller):
 
                 'is_rework': 'rework' in stage_name_lower,
 
-                'is_planning': 'plan' in stage_name_lower,
-
-            })
-
-        unassigned_tasks = parent_tasks.filtered(lambda task: not task.stage_id)
-
-        if unassigned_tasks:
-
-            completed_unassigned = len(unassigned_tasks.filtered(is_task_done))
-
-            tasks_by_stage.append({
-
-                'label': 'Unassigned',
-
-                'stage_id': False,
-
-                'count': len(unassigned_tasks),
-
-                'pct': round(len(unassigned_tasks) * 100.0 / total_task_denominator, 1),
-
-                'task_ids': unassigned_tasks.ids,
-
-            })
-
-            sdlc_phases.append({
-
-                'phase': 'Unassigned',
-
-                'task_count': len(unassigned_tasks),
-
-                'progress': round(completed_unassigned * 100.0 / len(unassigned_tasks)),
-
-                'status': 'Completed' if completed_unassigned == len(unassigned_tasks) else 'In Progress',
-
-                'due_date': 'No deadline',
-
-                'is_rework': False,
-
-                'is_planning': False,
+                'is_planning': phase_label == 'Planning',
 
             })
 
@@ -2506,39 +2457,31 @@ class ProjectDashboardController(http.Controller):
 
         user_task_counts = {}
 
-        user_task_done = {}
-
         for task in all_tasks:
 
             for user in task.user_ids:
 
-                if user.name not in user_task_counts:
-
-                    user_task_counts[user.name] = 0
-
-                    user_task_done[user.name] = 0
-
-                user_task_counts[user.name] += 1
-
+                if user.id not in user_task_counts:
+                    user_task_counts[user.id] = {
+                        'name': user.name,
+                        'done': 0,
+                        'task_ids': [],
+                    }
+                user_task_counts[user.id]['task_ids'].append(task.id)
                 if is_task_done(task):
-
-                    user_task_done[user.name] += 1
+                    user_task_counts[user.id]['done'] += 1
 
         resource_utilization = [
 
             {
-
-                'name': name,
-
-                'utilization': round((user_task_done[name] / count) * 100) if count else 0,
-
-                'done_tasks': user_task_done[name],
-
-                'total_tasks': count,
-
+                'user_id': user_id,
+                'name': data['name'],
+                'utilization': round((data['done'] / len(data['task_ids'])) * 100) if data['task_ids'] else 0,
+                'done_tasks': data['done'],
+                'total_tasks': len(data['task_ids']),
+                'task_ids': list(dict.fromkeys(data['task_ids'])),
             }
-
-            for name, count in sorted(user_task_counts.items(), key=lambda x: x[1], reverse=True)
+            for user_id, data in sorted(user_task_counts.items(), key=lambda item: len(item[1]['task_ids']), reverse=True)
 
         ][:5]
 
@@ -2598,7 +2541,7 @@ class ProjectDashboardController(http.Controller):
 
             })
 
-        pl_tasks = parent_tasks.filtered(lambda t: t.stage_id and 'plan' in t.stage_id.name.lower())
+        pl_tasks = parent_tasks.filtered(lambda t: t.stage_id and canonical_internal_stage_label(t.stage_id.name) == 'Planning')
 
         if pl_tasks:
 
@@ -2863,7 +2806,7 @@ class ProjectDashboardController(http.Controller):
             'tasks_by_status': tasks_by_stage,
 
             'tasks_by_stage': tasks_by_stage,
-            'sdlc_phases_total_tasks': sum(s['count'] for s in tasks_by_stage),
+            'sdlc_phases_total_tasks': sum(s['count'] for s in tasks_by_stage if s['label'] in SDLC_PHASE_LABELS),
 
             'sdlc_phases': sdlc_phases,
 
@@ -2874,6 +2817,8 @@ class ProjectDashboardController(http.Controller):
             'tasks_by_consultant': resource_utilization,
 
             'resource_utilization': resource_utilization,
+
+            'resource_task_ids': all_tasks.filtered(lambda task: bool(task.user_ids)).ids,
 
             'sdlc_workflow': sdlc_workflow,
 

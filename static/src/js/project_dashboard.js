@@ -629,6 +629,29 @@ export class ProjectDetailDashboard extends Component {
         this.openTasks(domain, stage.label + " Tasks");
     }
 
+    openPhaseTasks(phase) {
+        if (!phase) return;
+        this.openStageTasks({
+            label: phase.phase,
+            stage_id: phase.stage_id,
+            task_ids: phase.task_ids,
+        });
+    }
+
+    openResourceTasks(resource) {
+        if (!resource) return;
+        const taskIds = Array.isArray(resource.task_ids) ? resource.task_ids : [];
+        const domain = taskIds.length
+            ? [["id", "in", taskIds]]
+            : [["project_id", "=", this.state.selectedProjectId], ["user_ids", "in", [resource.user_id]]];
+        this.openTasks(domain, (resource.name || "Resource") + "'s Tasks");
+    }
+
+    openAllResourceTasks() {
+        const taskIds = this.state.data?.resource_task_ids || [];
+        this.openTasks([["id", "in", taskIds]], "Assigned Project Tasks");
+    }
+
     openProjects(domain, name) {
         this.action.doAction({
             type: "ir.actions.act_window",

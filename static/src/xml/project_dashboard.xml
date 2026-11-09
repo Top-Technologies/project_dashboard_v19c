@@ -436,7 +436,7 @@
                                     <div class="pd_kpi_v2_value"><t t-esc="state.data.kpis.total_subtasks || 0"/></div>
                                 </div>
                                 <div t-att-class="'pd_kpi_v2_trend ' + (state.data.kpis.total_subtasks_trend_class || 'pd_trend_neutral')" t-att-title="state.data.kpis.total_subtasks_trend_title || 'No period comparison available'">
-                                    <i t-att-class="'fa ' + (state.data.kpis.total_subtasks_trend_icon || 'fa-arrow-right')"/> <t t-esc="state.data.kpis.total_subtasks_trend"/>
+                                    <i t-att-class="'fa ' + (state.data.kpis.total_subtasks_trend_icon || 'fa-arrow-right')"/> <t t-esc="state.data.kpis.total_subtasks_trend || '0'"/>
                                 </div>
                             </div>
                             <svg class="pd_kpi_v2_wave" viewBox="0 0 100 24" preserveAspectRatio="none">
@@ -445,7 +445,7 @@
                             </svg>
                         </div>
 
-                        <!-- 9. Overdue Tasks -->
+                        <!-- 8. Overdue Tasks -->
                         <div class="pd_kpi_card_v2 pd_kpi_v2_crimson pd_row_clickable" t-on-click="onKpiOverdueTasksClick">
                             <div class="pd_kpi_v2_top">
                                 <div class="pd_kpi_v2_icon"><i class="fa fa-clock-o"/></div>
@@ -1370,7 +1370,7 @@
                                     <div class="pd_empty_v2">No SDLC phases found for this project</div>
                                 </t>
                                 <t t-foreach="state.showAllPhases ? state.data.sdlc_phases : (state.data.sdlc_phases_preview || [])" t-as="phase" t-key="phase_index">
-                                    <div class="ppd_milestone_row">
+                                    <div class="ppd_milestone_row pd_row_clickable" t-on-click="() => this.openPhaseTasks(phase)" title="View tasks in this phase">
                                         <div class="ppd_milestone_dot" t-att-class="phase.progress === 100 ? 'ppd_dot_reached' : (phase.progress > 0 ? 'ppd_dot_active' : '')"/>
                                         <span class="ppd_milestone_name text-truncate" t-att-title="phase.phase"><t t-esc="phase.phase"/><small class="text-muted ms-1">(<t t-esc="phase.task_count"/>)</small></span>
                                         <div class="ppd_milestone_bar_wrap flex-grow-1 mx-2">
@@ -1388,14 +1388,14 @@
                         <div class="pd_table_card_v2">
                             <div class="pd_chart_header_v2">
                                 <div class="pd_card_title_v2"><i class="fa fa-users text-primary me-2"/>Resource Utilization</div>
-                                <span class="pd_view_link" t-on-click="() => this.openTasks([['project_id','=',state.selectedProjectId]], 'Assigned Tasks')">View All <i class="fa fa-arrow-right ms-1"/></span>
+                                <span class="pd_view_link" t-on-click="openAllResourceTasks">View All <i class="fa fa-arrow-right ms-1"/></span>
                             </div>
                             <div class="pd_util_list">
                                 <t t-if="!state.data.resource_utilization || state.data.resource_utilization.length === 0">
                                     <div class="pd_empty_v2">No team member assigned yet</div>
                                 </t>
                                 <t t-foreach="state.data.resource_utilization || []" t-as="res" t-key="res.name">
-                                    <div class="pd_util_row">
+                                    <div class="pd_util_row pd_row_clickable" t-on-click="() => this.openResourceTasks(res)" title="View this person's project tasks">
                                         <div class="pd_util_name"><t t-esc="res.name"/></div>
                                         <div class="pd_bar_wrap_v2 flex-grow-1 mx-2">
                                             <div class="pd_bar_track_v2">
