@@ -72,7 +72,8 @@
                            decoration-danger="x_project_status == 'cancelled'"/>
                     <field name="x_project_type" widget="badge"
                            decoration-info="x_project_type == 'client'"
-                           decoration-muted="x_project_type == 'internal'"/>
+                           decoration-muted="x_project_type == 'internal'"
+                           decoration-primary="x_project_type == 'technical'"/>
                 </div>
             </xpath>
         </field>
@@ -92,7 +93,8 @@
                        decoration-danger="x_project_status == 'cancelled'"/>
                 <field name="x_project_type" widget="badge"
                        decoration-info="x_project_type == 'client'"
-                       decoration-muted="x_project_type == 'internal'"/>
+                       decoration-muted="x_project_type == 'internal'"
+                       decoration-primary="x_project_type == 'technical'"/>
             </xpath>
         </field>
     </record>
@@ -119,6 +121,8 @@
                         domain="[('x_project_type','=','client')]"/>
                 <filter string="Internal Project" name="type_internal"
                         domain="[('x_project_type','=','internal')]"/>
+                <filter string="Technical Project" name="type_technical"
+                        domain="[('x_project_type','=','technical')]"/>
                 <separator/>
             </xpath>
             <xpath expr="//group" position="inside">
