@@ -1,6 +1,13 @@
 from odoo import models, fields, api
 
 INTERNAL_SDLC_STAGES = (
+    ('New', 1, False),
+    ('In Progress', 2, False),
+    ('Done', 3, True),
+    ('Cancelled', 4, True),
+)
+
+TECHNICAL_SDLC_STAGES = (
     ('Planning', 1, False),
     ('Requirement Analysis', 2, False),
     ('In Development', 3, False),
@@ -33,6 +40,7 @@ class ProjectProject(models.Model):
         selection=[
             ('client', 'Client Project'),
             ('internal', 'Internal Project'),
+            ('technical', 'Technical Project'),
         ],
         string='Project Type',
         default='client',
@@ -81,6 +89,54 @@ class ProjectProject(models.Model):
         matching_tasks = Task.search([('user_ids', operator, value)])
         return [('id', 'in', matching_tasks.project_id.ids)]
 
+    @api.model
+    def _register_hook(self):
+        super()._register_hook()
+        self._ensure_project_type_selection()
+
+    def init(self):
+        super().init()
+        self._ensure_project_type_selection()
+
+    @api.model
+    def fields_get(self, allfields=None, attributes=None):
+        res = super().fields_get(allfields=allfields, attributes=attributes)
+        if 'x_project_type' in res:
+            selection = res['x_project_type'].get('selection')
+            if selection:
+                keys = [k for k, _ in selection]
+                if 'technical' not in keys:
+                    selection.append(('technical', 'Technical Project'))
+        return res
+
+    @api.model
+    def _ensure_project_type_selection(self):
+        try:
+            cr = self.env.cr
+            cr.execute("SELECT id FROM ir_model_fields WHERE model = 'project.project' AND name = 'x_project_type'")
+            row = cr.fetchone()
+            if not row:
+                return
+            field_id = row[0]
+            cr.execute("SELECT id FROM ir_model_fields_selection WHERE field_id = %s AND value = 'technical'", (field_id,))
+            sel = cr.fetchone()
+            if not sel:
+                import json
+                name_json = json.dumps({'en_US': 'Technical Project'})
+                cr.execute("""
+                    INSERT INTO ir_model_fields_selection (field_id, value, name, sequence)
+                    VALUES (%s, 'technical', %s::jsonb, 2)
+                    RETURNING id
+                """, (field_id, name_json))
+                sel_id = cr.fetchone()[0]
+                cr.execute("""
+                    INSERT INTO ir_model_data (name, module, model, res_id, noupdate)
+                    VALUES ('selection__project_project__x_project_type__technical', 'project_dashboard_v19c', 'ir.model.fields.selection', %s, false)
+                    ON CONFLICT (module, name) DO UPDATE SET res_id = EXCLUDED.res_id
+                """, (sel_id,))
+        except Exception:
+            pass
+
     @api.model_create_multi
     def create(self, vals_list):
         # Client projects keep the existing four standard task stages.
@@ -106,9 +162,9 @@ class ProjectProject(models.Model):
         
         projects = super().create(vals_list)
 
-        # Give every internal project its own SDLC task stages so its phases
-        # are available immediately and remain isolated from client projects.
+        # Keep internal stages and technical SDLC stages separate by project.
         projects.filtered(lambda project: project.x_project_type == 'internal')._ensure_internal_sdlc_stages()
+        projects.filtered(lambda project: project.x_project_type == 'technical')._ensure_technical_sdlc_stages()
         
         milestones_to_create = []
         for project in projects:
@@ -133,6 +189,8 @@ class ProjectProject(models.Model):
         res = super().write(vals)
         if vals.get('x_project_type') == 'internal':
             self._ensure_internal_sdlc_stages()
+        if vals.get('x_project_type') == 'technical':
+            self._ensure_technical_sdlc_stages()
         if vals.get('x_project_type') == 'client':
             # Create milestones if not already present
             milestones_to_create = []
@@ -177,10 +235,20 @@ class ProjectProject(models.Model):
                     })
                 stages |= stage
 
-            # Earlier versions exposed generic New and Done phases. Move
-            # those tasks to their SDLC equivalents before hiding the old
-            # stages from this project's status bar.
+            # Move tasks from the previous multi-phase workflow into the
+            # corresponding stage before replacing the project's stage bar.
+            legacy_names = [
+                'Planning', 'Requirement Analysis', 'In Development',
+                'Testing & Review', 'Rework', 'Implemented', 'On Hold',
+                'New', 'Done',
+            ]
             legacy_stages = Stage.search([
+                ('project_ids', '=', project.id),
+                ('name', 'in', legacy_names),
+            ])
+            # Include shared standard stages used by existing tasks even if
+            # they are no longer listed in the project's type_ids.
+            legacy_stages |= Stage.search([
                 ('user_id', '=', False),
                 ('name', 'in', ['New', 'Done']),
             ])
@@ -193,12 +261,48 @@ class ProjectProject(models.Model):
                     ('stage_id', 'in', legacy_stages.ids),
                 ])
                 stage_by_name = {stage.name.strip().lower(): stage for stage in stages}
+                in_progress_names = {
+                    'requirement analysis', 'in development', 'testing & review',
+                    'rework', 'on hold', 'in progress',
+                }
                 for legacy in legacy_stages:
-                    target_name = 'Planning' if legacy.name.strip().lower() == 'new' else 'Implemented'
+                    old_name = legacy.name.strip().lower()
+                    if old_name == 'new' or old_name == 'planning':
+                        target_name = 'New'
+                    elif old_name in ('done', 'implemented'):
+                        target_name = 'Done'
+                    elif old_name == 'cancelled':
+                        target_name = 'Cancelled'
+                    elif old_name in in_progress_names:
+                        target_name = 'In Progress'
+                    else:
+                        continue
                     target = stage_by_name.get(target_name.lower())
                     if target:
                         project_tasks.filtered(lambda task: task.stage_id == legacy).write({'stage_id': target.id})
 
+            project.sudo().write({'type_ids': [(6, 0, stages.ids)]})
+
+    def _ensure_technical_sdlc_stages(self):
+        Stage = self.env['project.task.type'].sudo()
+        for project in self.filtered(lambda record: record.x_project_type == 'technical'):
+            linked_stages = Stage.search([
+                ('project_ids', '=', project.id),
+                ('name', 'in', [name for name, _sequence, _fold in TECHNICAL_SDLC_STAGES]),
+            ]).filtered(lambda stage: stage.project_ids.ids == [project.id])
+            stages_by_name = {stage.name: stage for stage in linked_stages}
+            stages = Stage.browse()
+            for name, sequence, fold in TECHNICAL_SDLC_STAGES:
+                stage = stages_by_name.get(name)
+                if not stage:
+                    stage = Stage.create({
+                        'name': name,
+                        'sequence': sequence,
+                        'fold': fold,
+                        'user_id': False,
+                        'project_ids': [(6, 0, [project.id])],
+                    })
+                stages |= stage
             project.sudo().write({'type_ids': [(6, 0, stages.ids)]})
 
 
@@ -229,7 +333,7 @@ class ProjectProject(models.Model):
                     project.write({'x_project_status': 'new'})
                 continue
 
-            if project.x_project_type == 'internal':
+            if project.x_project_type in ('internal', 'technical'):
                 stage_names = [(task.stage_id.name or 'New').strip().lower() for task in tasks]
                 all_cancelled = all(name in ('cancelled', 'canceled') for name in stage_names)
                 all_on_hold = all(name in ('on hold', 'on-hold') for name in stage_names)

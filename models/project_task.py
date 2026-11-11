@@ -25,7 +25,12 @@ class ProjectTask(models.Model):
                 task.date_deadline
                 and task.date_deadline < now
                 and task.stage_id.name not in ('Done', 'Cancelled')
-                and not (task.project_id.x_project_type == 'internal' and task.stage_id.name == 'Implemented')
+                and not (
+                    task.project_id.x_project_type == 'internal' and task.stage_id.name == 'Done'
+                )
+                and not (
+                    task.project_id.x_project_type == 'technical' and task.stage_id.name == 'Implemented'
+                )
             ):
                 task.x_is_overdue = True
             else:
