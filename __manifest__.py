@@ -1,6 +1,6 @@
 {
     'name': 'Project Dashboard v19 Community',
-    'version': '19.0.1.0.11',
+    'version': '19.0.1.0.14',
     'summary': 'Custom Project Dashboard with fixed stages and KPI tracking',
     'description': """
         Project Dashboard for Odoo 19 Community

@@ -7,16 +7,16 @@ from odoo.http import request
 from odoo.exceptions import AccessError
 
 SDLC_PHASE_LABELS = (
-    'New',
     'Planning',
     'Requirement Analysis',
     'In Development',
     'Testing & Review',
-    'Rework',
     'Implemented',
+    'Rework',
     'On Hold',
     'Cancelled',
 )
+INTERNAL_PHASE_LABELS = ('New', 'In Progress', 'Done', 'Cancelled')
 
 def is_task_done(t):
 
@@ -26,7 +26,7 @@ def is_task_done(t):
 
     if t.stage_id:
         project = t.project_id or (t.parent_id.project_id if t.parent_id else False)
-        if project and project.x_project_type == 'internal' and canonical_internal_stage_label(t.stage_id.name) == 'Implemented':
+        if project and project.x_project_type in ('internal', 'technical') and canonical_internal_stage_label(t.stage_id.name) == 'Implemented':
             return True
 
     if hasattr(t, 'state') and t.state == '1_done':
@@ -39,7 +39,7 @@ def canonical_internal_stage_label(name):
     """Map legacy task stages to one of the dashboard's SDLC buckets."""
     label = ' '.join((name or '').strip().replace('&', 'and').replace('-', ' ').lower().split())
     aliases = {
-        'new': 'New',
+        'new': 'Planning',
         'planning': 'Planning',
         'requirement analysis': 'Requirement Analysis',
         'requirements analysis': 'Requirement Analysis',
@@ -62,6 +62,22 @@ def canonical_internal_stage_label(name):
         'completed': 'Implemented',
         'cancelled': 'Cancelled',
         'canceled': 'Cancelled',
+    }
+    return aliases.get(label, 'Other')
+
+def canonical_dashboard_stage_label(name, project_type):
+    """Return the stage bucket used by the selected project dashboard."""
+    if project_type != 'internal':
+        return canonical_internal_stage_label(name)
+    label = ' '.join((name or '').strip().lower().split())
+    aliases = {
+        'new': 'New', 'planning': 'New',
+        'in progress': 'In Progress', 'inprocess': 'In Progress',
+        'in process': 'In Progress', 'in development': 'In Progress',
+        'requirement analysis': 'In Progress', 'testing & review': 'In Progress',
+        'rework': 'In Progress', 'on hold': 'In Progress',
+        'done': 'Done', 'implemented': 'Done', 'completed': 'Done',
+        'cancelled': 'Cancelled', 'canceled': 'Cancelled',
     }
     return aliases.get(label, 'Other')
 
@@ -265,9 +281,13 @@ class ProjectDashboardController(http.Controller):
 
             return self._get_client_dashboard_data()
 
+        elif project_type == 'technical':
+
+            return self._get_internal_dashboard_data(date_filter=date_filter, project_type='technical')
+
         else:
 
-            return self._get_internal_dashboard_data(date_filter=date_filter)
+            return self._get_internal_dashboard_data(date_filter=date_filter, project_type='internal')
 
     # ══════════════════════════════════════════════════════════════════════
 
@@ -345,15 +365,15 @@ class ProjectDashboardController(http.Controller):
 
         projects_by_status = [
 
-            {'label': 'New',         'count': status_counts['new'],         'key': 'new'},
+            {'label': 'Planning',        'count': status_counts['new'],         'key': 'new'},
 
-            {'label': 'In Progress', 'count': status_counts['in_progress'], 'key': 'in_progress'},
+            {'label': 'In Development',  'count': status_counts['in_progress'], 'key': 'in_progress'},
 
-            {'label': 'On Hold',     'count': status_counts['on_hold'],     'key': 'on_hold'},
+            {'label': 'On Hold',         'count': status_counts['on_hold'],     'key': 'on_hold'},
 
-            {'label': 'Done',        'count': status_counts['done'],         'key': 'done'},
+            {'label': 'Implemented',     'count': status_counts['done'],         'key': 'done'},
 
-            {'label': 'Cancelled',   'count': status_counts['cancelled'],   'key': 'cancelled'},
+            {'label': 'Cancelled',       'count': status_counts['cancelled'],   'key': 'cancelled'},
 
         ]
 
@@ -743,7 +763,7 @@ class ProjectDashboardController(http.Controller):
 
     # ══════════════════════════════════════════════════════════════════════
 
-    def _get_internal_dashboard_data(self, date_filter='month'):
+    def _get_internal_dashboard_data(self, date_filter='month', project_type='internal'):
 
         Project = request.env["project.project"].sudo()
 
@@ -771,7 +791,7 @@ class ProjectDashboardController(http.Controller):
 
             start_date = None
 
-        all_projects = Project.search([('x_project_type', '=', 'internal')])
+        all_projects = Project.search([('x_project_type', '=', project_type)])
         trend_projects = all_projects
 
         if start_date:
@@ -800,7 +820,7 @@ class ProjectDashboardController(http.Controller):
 
         cancelled_projects = len(all_projects.filtered(lambda p: p.x_project_status == 'cancelled'))
 
-        parent_tasks = Task.search([('project_id.x_project_type', '=', 'internal'), ('project_id', '!=', False), ('parent_id', '=', False)])
+        parent_tasks = Task.search([('project_id.x_project_type', '=', project_type), ('project_id', '!=', False), ('parent_id', '=', False)])
         trend_parent_tasks = parent_tasks
 
         if start_date:
@@ -847,19 +867,23 @@ class ProjectDashboardController(http.Controller):
 
         total_p_cnt = total_projects or 1
 
-        projects_by_status = [
-
-            {'label': 'New',         'count': status_counts['new'],         'key': 'new',         'pct': round(status_counts['new'] * 100.0 / total_p_cnt, 1)},
-
-            {'label': 'In Progress', 'count': status_counts['in_progress'], 'key': 'in_progress', 'pct': round(status_counts['in_progress'] * 100.0 / total_p_cnt, 1)},
-
-            {'label': 'On Hold',     'count': status_counts['on_hold'],     'key': 'on_hold',     'pct': round(status_counts['on_hold'] * 100.0 / total_p_cnt, 1)},
-
-            {'label': 'Done',        'count': status_counts['done'],         'key': 'done',        'pct': round(status_counts['done'] * 100.0 / total_p_cnt, 1)},
-
-            {'label': 'Cancelled',   'count': status_counts['cancelled'],   'key': 'cancelled',   'pct': round(status_counts['cancelled'] * 100.0 / total_p_cnt, 1)},
-
-        ]
+        # Use simple labels for internal, SDLC labels for technical
+        if project_type == 'technical':
+            projects_by_status = [
+                {'label': 'Planning',       'count': status_counts['new'],         'key': 'new',         'pct': round(status_counts['new'] * 100.0 / total_p_cnt, 1)},
+                {'label': 'In Development', 'count': status_counts['in_progress'], 'key': 'in_progress', 'pct': round(status_counts['in_progress'] * 100.0 / total_p_cnt, 1)},
+                {'label': 'On Hold',        'count': status_counts['on_hold'],     'key': 'on_hold',     'pct': round(status_counts['on_hold'] * 100.0 / total_p_cnt, 1)},
+                {'label': 'Implemented',    'count': status_counts['done'],        'key': 'done',        'pct': round(status_counts['done'] * 100.0 / total_p_cnt, 1)},
+                {'label': 'Cancelled',      'count': status_counts['cancelled'],   'key': 'cancelled',   'pct': round(status_counts['cancelled'] * 100.0 / total_p_cnt, 1)},
+            ]
+        else:
+            projects_by_status = [
+                {'label': 'New',         'count': status_counts['new'],         'key': 'new',         'pct': round(status_counts['new'] * 100.0 / total_p_cnt, 1)},
+                {'label': 'In Progress', 'count': status_counts['in_progress'], 'key': 'in_progress', 'pct': round(status_counts['in_progress'] * 100.0 / total_p_cnt, 1)},
+                {'label': 'On Hold',     'count': status_counts['on_hold'],     'key': 'on_hold',     'pct': round(status_counts['on_hold'] * 100.0 / total_p_cnt, 1)},
+                {'label': 'Done',        'count': status_counts['done'],        'key': 'done',        'pct': round(status_counts['done'] * 100.0 / total_p_cnt, 1)},
+                {'label': 'Cancelled',   'count': status_counts['cancelled'],   'key': 'cancelled',   'pct': round(status_counts['cancelled'] * 100.0 / total_p_cnt, 1)},
+            ]
 
         # SDLC Phases · Tasks by Stage (donut)
 
@@ -869,7 +893,7 @@ class ProjectDashboardController(http.Controller):
 
         for task in parent_tasks:
 
-            stage_name = canonical_internal_stage_label(task.stage_id.name) if task.stage_id else 'Unassigned'
+            stage_name = canonical_dashboard_stage_label(task.stage_id.name, project_type) if task.stage_id else 'Unassigned'
 
             stage_data[stage_name] = stage_data.get(stage_name, 0) + 1
 
@@ -877,7 +901,7 @@ class ProjectDashboardController(http.Controller):
 
         # Only the configured SDLC phases belong in this chart. Keep legacy,
         # unrelated, and unassigned stages out of both the legend and totals.
-        stage_order = list(SDLC_PHASE_LABELS)
+        stage_order = list(INTERNAL_PHASE_LABELS if project_type == 'internal' else SDLC_PHASE_LABELS)
 
         tot_sdlc_cnt = sum(stage_data.get(stage, 0) for stage in stage_order) or 1
 
@@ -1083,229 +1107,77 @@ class ProjectDashboardController(http.Controller):
 
         # SDLC Workflow Tracking (replacing milestones & approvals, highlighting Planning & Re-Work)
 
+        # ── SDLC Workflow: 1 row per project, phase derived from x_project_status ──
+        # Mapping: new->Planning, in_progress->In Development, on_hold->On Hold,
+        #          done->Implemented, cancelled->Cancelled
+        _STATUS_TO_SDLC = {
+            'new':         ('Planning',       'In Planning',   'info',      'Pending',  'warning', False, True),
+            'in_progress': ('In Development', 'In Progress',   'primary',   'In Progress', 'info', False, False),
+            'on_hold':     ('On Hold',        'On Hold',       'warning',   'Pending',  'warning', False, False),
+            'done':        ('Implemented',    'Completed',     'success',   'Approved', 'success', False, False),
+            'cancelled':   ('Cancelled',      'Cancelled',     'secondary', 'N/A',      'secondary', False, False),
+        }
+
+        # SDLC Workflow & Stage Tracking: take technical projects (1 row per project)
+        sdlc_projects = Project.search([('x_project_type', '=', 'technical')])
+        if not sdlc_projects and project_type != 'technical':
+            sdlc_projects = all_projects
+
         sdlc_workflow = []
 
-        for proj in all_projects:
+        for proj in sdlc_projects:
 
-            p_t = parent_tasks.filtered(lambda t: t.project_id.id == proj.id)
+            all_p_tasks = Task.search([('project_id', '=', proj.id)])
 
-            p_st = subtasks.filtered(lambda t: t.project_id.id == proj.id or t.parent_id.id in p_t.ids)
+            p_t = all_p_tasks.filtered(lambda t: not t.parent_id)
 
-            all_p_tasks = p_t | p_st
+            task_count = len(all_p_tasks)
 
-            rw_tasks = all_p_tasks.filtered(lambda t: t.stage_id and 'rework' in t.stage_id.name.lower())
+            done_cnt = len(all_p_tasks.filtered(is_task_done))
 
-            if rw_tasks:
+            pct = round(done_cnt * 100 / task_count) if task_count else 0
 
-                done_cnt = len(rw_tasks.filtered(is_task_done))
+            proj_status = proj.x_project_status or 'new'
 
-                pct = round(done_cnt * 100 / len(rw_tasks))
+            phase, status_lbl, status_color, approval_lbl, approval_color, is_rework, is_planning =                 _STATUS_TO_SDLC.get(proj_status, _STATUS_TO_SDLC['new'])
 
-                sdlc_workflow.append({
+            # Due date: use first task deadline, else project create date
+            due = None
+            for t in p_t:
+                if t.date_deadline:
+                    due = t.date_deadline.strftime('%b %d, %Y')
+                    break
+            if not due and proj.create_date:
+                due = proj.create_date.strftime('%b %d, %Y')
+            due = due or 'Active'
 
-                    'project_id': proj.id,
+            sdlc_workflow.append({
 
-                    'project_name': proj.name,
+                'project_id': proj.id,
 
-                    'phase': 'Re-Work',
+                'project_name': proj.name,
 
-                    'task_count': len(rw_tasks),
+                'phase': phase,
 
-                    'progress': pct,
+                'task_count': task_count,
 
-                    'status': 'Re-Work Required',
+                'progress': pct,
 
-                    'status_color': 'danger',
+                'status': status_lbl,
 
-                    'approval': 'Pending',
+                'status_color': status_color,
 
-                    'approval_color': 'warning',
+                'approval': approval_lbl,
 
-                    'due_date': rw_tasks[0].date_deadline.strftime('%b %d, %Y') if rw_tasks[0].date_deadline else 'Active',
+                'approval_color': approval_color,
 
-                    'is_rework': True,
+                'due_date': due,
 
-                    'is_planning': False,
+                'is_rework': is_rework,
 
-                })
+                'is_planning': is_planning,
 
-            new_tasks = p_t.filtered(lambda t: t.stage_id and t.stage_id.name.lower() == 'new')
-
-            if new_tasks:
-
-                done_cnt = len(new_tasks.filtered(is_task_done))
-
-                pct = round(done_cnt * 100 / len(new_tasks))
-
-                sdlc_workflow.append({
-
-                    'project_id': proj.id,
-
-                    'project_name': proj.name,
-
-                    'phase': 'New',
-
-                    'task_count': len(new_tasks),
-
-                    'progress': pct,
-
-                    'status': 'New',
-
-                    'status_color': 'secondary',
-
-                    'approval': 'Pending',
-
-                    'approval_color': 'warning',
-
-                    'due_date': new_tasks[0].date_deadline.strftime('%b %d, %Y') if new_tasks[0].date_deadline else 'Active',
-
-                    'is_rework': False,
-
-                    'is_planning': False,
-
-                })
-
-            pl_tasks = p_t.filtered(lambda t: t.stage_id and canonical_internal_stage_label(t.stage_id.name) == 'Planning')
-
-            if pl_tasks:
-
-                done_cnt = len(pl_tasks.filtered(is_task_done))
-
-                pct = round(done_cnt * 100 / len(pl_tasks))
-
-                sdlc_workflow.append({
-
-                    'project_id': proj.id,
-
-                    'project_name': proj.name,
-
-                    'phase': 'Planning',
-
-                    'task_count': len(pl_tasks),
-
-                    'progress': pct,
-
-                    'status': 'In Planning',
-
-                    'status_color': 'info',
-
-                    'approval': 'Pending',
-
-                    'approval_color': 'warning',
-
-                    'due_date': pl_tasks[0].date_deadline.strftime('%b %d, %Y') if pl_tasks[0].date_deadline else 'Active',
-
-                    'is_rework': False,
-
-                    'is_planning': True,
-
-                })
-
-            dev_tasks = all_p_tasks.filtered(lambda t: t.stage_id and ('dev' in t.stage_id.name.lower() or t.stage_id.name == 'In Progress'))
-
-            if dev_tasks:
-
-                done_cnt = len(dev_tasks.filtered(is_task_done))
-
-                pct = round(done_cnt * 100 / len(dev_tasks))
-
-                sdlc_workflow.append({
-
-                    'project_id': proj.id,
-
-                    'project_name': proj.name,
-
-                    'phase': 'Development',
-
-                    'task_count': len(dev_tasks),
-
-                    'progress': pct,
-
-                    'status': 'In Progress' if pct < 100 else 'Completed',
-
-                    'status_color': 'primary' if pct < 100 else 'success',
-
-                    'approval': 'Approved' if pct == 100 else 'In Progress',
-
-                    'approval_color': 'success' if pct == 100 else 'info',
-
-                    'due_date': dev_tasks[0].date_deadline.strftime('%b %d, %Y') if dev_tasks[0].date_deadline else 'Active',
-
-                    'is_rework': False,
-
-                    'is_planning': False,
-
-                })
-
-            test_tasks = all_p_tasks.filtered(lambda t: t.stage_id and ('test' in t.stage_id.name.lower() or 'review' in t.stage_id.name.lower()))
-
-            if test_tasks:
-
-                done_cnt = len(test_tasks.filtered(is_task_done))
-
-                pct = round(done_cnt * 100 / len(test_tasks))
-
-                sdlc_workflow.append({
-
-                    'project_id': proj.id,
-
-                    'project_name': proj.name,
-
-                    'phase': 'Testing & Review',
-
-                    'task_count': len(test_tasks),
-
-                    'progress': pct,
-
-                    'status': 'In Review' if pct < 100 else 'Verified',
-
-                    'status_color': 'warning' if pct < 100 else 'success',
-
-                    'approval': 'Approved' if pct == 100 else 'Pending',
-
-                    'approval_color': 'success' if pct == 100 else 'warning',
-
-                    'due_date': test_tasks[0].date_deadline.strftime('%b %d, %Y') if test_tasks[0].date_deadline else 'Active',
-
-                    'is_rework': False,
-
-                    'is_planning': False,
-
-                })
-
-            if not (rw_tasks or pl_tasks or dev_tasks or test_tasks) and all_p_tasks:
-
-                done_cnt = len(all_p_tasks.filtered(is_task_done))
-
-                pct = round(done_cnt * 100 / len(all_p_tasks))
-
-                sdlc_workflow.append({
-
-                    'project_id': proj.id,
-
-                    'project_name': proj.name,
-
-                    'phase': 'Implementation',
-
-                    'task_count': len(all_p_tasks),
-
-                    'progress': pct,
-
-                    'status': 'Completed' if pct == 100 else 'In Progress',
-
-                    'status_color': 'success' if pct == 100 else 'primary',
-
-                    'approval': 'Approved' if pct == 100 else 'Pending',
-
-                    'approval_color': 'success' if pct == 100 else 'warning',
-
-                    'due_date': proj.create_date.strftime('%b %d, %Y') if proj.create_date else 'Active',
-
-                    'is_rework': False,
-
-                    'is_planning': False,
-
-                })
+            })
 
         # Overdue tasks
 
@@ -2388,25 +2260,34 @@ class ProjectDashboardController(http.Controller):
 
         phase_by_label = {}
 
+        project_phase_labels = INTERNAL_PHASE_LABELS if project.x_project_type == 'internal' else SDLC_PHASE_LABELS
+
         for stage in phase_stages:
 
-            phase_label = canonical_internal_stage_label(stage.name)
+            phase_label = canonical_dashboard_stage_label(stage.name, project.x_project_type)
 
             # Several projects may expose shared and project-specific stages
 
             # with the same spelling/case. One canonical phase is enough.
 
-            if phase_label in SDLC_PHASE_LABELS:
+            if phase_label in project_phase_labels:
                 phase_by_label.setdefault(phase_label, stage)
 
-        phase_order = list(SDLC_PHASE_LABELS)
-        for phase_label in SDLC_PHASE_LABELS:
+        phase_order = list(project_phase_labels)
+        for phase_label in project_phase_labels:
             phase_by_label.setdefault(phase_label, False)
 
         sdlc_task_count = sum(
             1 for task in parent_tasks
-            if task.stage_id and canonical_internal_stage_label(task.stage_id.name) in SDLC_PHASE_LABELS
+            if task.stage_id and canonical_dashboard_stage_label(task.stage_id.name, project.x_project_type) in project_phase_labels
         ) or 1
+
+        pipeline_order = (
+            ['New', 'In Progress', 'Done'] if project.x_project_type == 'internal'
+            else ['Planning', 'Requirement Analysis', 'In Development', 'Testing & Review', 'Implemented']
+        )
+        pipeline_rank = {p: i for i, p in enumerate(pipeline_order, 1)}
+        total_parent_tasks = len(parent_tasks)
 
         for phase_label in phase_order:
 
@@ -2414,17 +2295,63 @@ class ProjectDashboardController(http.Controller):
 
             stage_tasks = parent_tasks.filtered(
 
-                lambda task: (canonical_internal_stage_label(task.stage_id.name) if task.stage_id else 'Unassigned') == phase_label
+                lambda task: (canonical_dashboard_stage_label(task.stage_id.name, project.x_project_type) if task.stage_id else 'Unassigned') == phase_label
 
             )
-
-            completed_in_stage = len(stage_tasks.filtered(is_task_done))
-
-            stage_progress = round(completed_in_stage * 100.0 / len(stage_tasks)) if stage_tasks else 0
 
             stage_deadlines = sorted(task.date_deadline for task in stage_tasks if task.date_deadline)
 
             stage_name_lower = phase_label.lower()
+
+            if phase_label in pipeline_rank:
+                target_rank = pipeline_rank[phase_label]
+                if total_parent_tasks == 0:
+                    stage_progress = 0
+                    stage_status = 'Not Started'
+                else:
+                    task_progs = []
+                    for task in parent_tasks:
+                        t_stage = canonical_dashboard_stage_label(task.stage_id.name, project.x_project_type) if task.stage_id else ('New' if project.x_project_type == 'internal' else 'Planning')
+                        t_rank = pipeline_rank.get(t_stage, 0)
+                        terminal_phase = 'Done' if project.x_project_type == 'internal' else 'Implemented'
+                        if t_rank > target_rank or (t_rank == target_rank and phase_label == terminal_phase):
+                            task_progs.append(100)
+                        elif t_rank == target_rank:
+                            task_subtasks = subtasks.filtered(lambda st: st.parent_id.id == task.id)
+                            if task_subtasks:
+                                done_cnt = len(task_subtasks.filtered(is_task_done))
+                                task_progs.append(round(done_cnt * 100.0 / len(task_subtasks)))
+                            else:
+                                task_progs.append(0)
+                        else:
+                            task_progs.append(0)
+                    stage_progress = round(sum(task_progs) / len(task_progs)) if task_progs else 0
+                    if stage_progress == 100:
+                        stage_status = 'Completed'
+                    elif stage_tasks or stage_progress > 0:
+                        stage_status = 'In Progress'
+                    else:
+                        stage_status = 'Not Started'
+            else:
+                if not stage_tasks:
+                    stage_progress = 0
+                    stage_status = 'Not Started'
+                elif phase_label == 'Cancelled':
+                    stage_progress = 100
+                    stage_status = 'Cancelled'
+                elif phase_label == 'On Hold':
+                    stage_progress = 0
+                    stage_status = 'On Hold'
+                elif phase_label == 'Rework':
+                    rw_subtasks = subtasks.filtered(lambda st: st.parent_id.id in stage_tasks.ids)
+                    if rw_subtasks:
+                        stage_progress = round(len(rw_subtasks.filtered(is_task_done)) * 100.0 / len(rw_subtasks))
+                    else:
+                        stage_progress = 0
+                    stage_status = 'In Progress'
+                else:
+                    stage_progress = 0
+                    stage_status = 'In Progress'
 
             tasks_by_stage.append({
 
@@ -2452,7 +2379,7 @@ class ProjectDashboardController(http.Controller):
 
                 'progress': stage_progress,
 
-                'status': 'Completed' if stage_tasks and completed_in_stage == len(stage_tasks) else ('In Progress' if stage_tasks else 'Not Started'),
+                'status': stage_status,
 
                 'due_date': stage_deadlines[0].strftime('%b %d, %Y') if stage_deadlines else 'No deadline',
 
@@ -2526,31 +2453,7 @@ class ProjectDashboardController(http.Controller):
 
             })
 
-        new_tasks = parent_tasks.filtered(lambda t: t.stage_id and t.stage_id.name.lower() == 'new')
-
-        if new_tasks:
-
-            done_cnt = len(new_tasks.filtered(is_task_done))
-
-            sdlc_workflow.append({
-
-                'phase': 'New',
-
-                'task_count': len(new_tasks),
-
-                'progress': round(done_cnt * 100 / len(new_tasks)),
-
-                'status': 'New',
-
-                'status_color': 'secondary',
-
-                'due_date': new_tasks[0].date_deadline.strftime('%b %d, %Y') if new_tasks[0].date_deadline else 'Active',
-
-                'is_rework': False,
-
-                'is_planning': False,
-
-            })
+# 'New' phase mapped to 'Planning' via canonical_internal_stage_label
 
         pl_tasks = parent_tasks.filtered(lambda t: t.stage_id and canonical_internal_stage_label(t.stage_id.name) == 'Planning')
 
