@@ -178,7 +178,7 @@ export class ProjectDashboard extends Component {
 
     onKpiSubtasksClick() {
         const subtaskIds = this.state.data?.subtask_ids;
-        if (this.state.projectType === "internal" && Array.isArray(subtaskIds) && subtaskIds.length > 0) {
+        if (this.state.projectType !== "client" && Array.isArray(subtaskIds) && subtaskIds.length > 0) {
             this.openTasks([["id", "in", subtaskIds]], "Subtasks", { subtask_action: true });
         } else {
             this.openTasks(
@@ -212,8 +212,8 @@ export class ProjectDashboard extends Component {
     }
 
     onResourceUtilizationClick(userId, userName) {
-        if (this.state.projectType === "internal") {
-            this.openTasks([["user_ids", "in", [userId]], ["project_id.x_project_type", "=", "internal"]], (userName || "User") + "'s Tasks");
+        if (this.state.projectType !== "client") {
+            this.openTasks([["user_ids", "in", [userId]], ["project_id.x_project_type", "=", this.state.projectType]], (userName || "User") + "'s Tasks");
         } else {
             this.openUserTasks(userId, userName);
         }
@@ -290,7 +290,7 @@ export class ProjectDashboard extends Component {
         }
         this._destroyCharts();
 
-        if (this.state.projectType === 'internal') {
+        if (this.state.projectType === 'internal' || this.state.projectType === 'technical') {
             this._renderInternalProjectStatusChart();
             this._renderInternalTaskStageChart();
             // Bar chart removed for internal projects as requested
@@ -342,9 +342,9 @@ export class ProjectDashboard extends Component {
                     const slice = data[elements[0].index];
                     if (slice) {
                         this.openProjects([
-                            ["x_project_type", "=", "internal"],
+                            ["x_project_type", "=", this.state.projectType],
                             ["x_project_status", "=", slice.key],
-                        ], slice.label + " Internal Projects");
+                        ], slice.label + " " + (this.state.projectType === 'technical' ? 'Technical' : 'Internal') + " Projects");
                     }
                 },
             },
@@ -480,14 +480,14 @@ export class ProjectDashboard extends Component {
     _renderClientProgressChart() {
         const el = this.chartProgressRef.el;
         if (!el || !window.Chart) return;
-        const data = this.state.data.project_progress;
+        const data = this.state.data.project_progress || [];
         this._charts.progress = new window.Chart(el, {
             type: "bar",
             data: {
-                labels: data.map((d) => d.label),
+                labels: data.map((item) => item.label),
                 datasets: [{
                     label: "Projects",
-                    data: data.map((d) => d.count),
+                    data: data.map((item) => item.count),
                     backgroundColor: ["#dc3545", "#fd7e14", "#ffc107", "#20c997", "#28a745"],
                     borderRadius: 4,
                 }],
@@ -500,7 +500,7 @@ export class ProjectDashboard extends Component {
                     y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 }, grid: { color: "rgba(0,0,0,0.05)" } },
                     x: { grid: { display: false } },
                 },
-                onClick: (evt, elements) => {
+                onClick: (event, elements) => {
                     if (!elements.length) return;
                     const bucket = data[elements[0].index];
                     if (bucket && bucket.project_ids && bucket.project_ids.length) {
@@ -510,6 +510,7 @@ export class ProjectDashboard extends Component {
             },
         });
     }
+
 }
 
 registry.category("actions").add("project_dashboard_v19c", ProjectDashboard);
@@ -941,11 +942,12 @@ export class ProjectDetailDashboard extends Component {
 
         this._destroyCharts();
 
-        if (this.state.projectType === 'internal') {
+        if (this.state.projectType === 'technical') {
             this._renderInternalDetailProgressChart();
             this._renderInternalDetailTaskStageChart();
             this._renderOverallPlanChart();
         } else {
+            // internal and client both use the same chart layout
             this._renderClientDetailCharts();
         }
     }

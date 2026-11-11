@@ -172,6 +172,7 @@
     gap: 14px;
     margin-bottom: 20px;
 }
+.pd_two_charts { grid-template-columns: 1fr 1fr; }
 .pd_internal_charts { grid-template-columns: 1fr 1.2fr; }
 .pd_stage_summary { display: grid; gap: 10px; padding: 10px 2px; }
 .pd_stage_summary_row { display: grid; grid-template-columns: minmax(90px, 1fr) 34px 1.4fr; gap: 10px; align-items: center; font-size: .8rem; }
@@ -717,12 +718,26 @@
 .ppd_dot_reached { background-color: #10b981; box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2); }
 .ppd_dot_active { background-color: #3b82f6; }
 .ppd_milestone_name {
-    width: 95px;
+    width: 145px;
+    min-width: 140px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     font-weight: 600;
     color: #334155;
+    font-size: 0.82rem;
+}
+.ppd_milestone_badge {
+    font-size: 0.78rem;
+    color: #64748b;
+    font-weight: 600;
+    min-width: 28px;
+    text-align: right;
+    flex-shrink: 0;
+}
+.ppd_milestone_badge.badge-primary {
+    color: #2563eb;
+    font-weight: 700;
 }
 .ppd_milestone_bar_wrap {
     flex-grow: 1;
@@ -1681,6 +1696,8 @@
 .pd_phase_testing  { background: #7c3aed; color: #fff; }
 .pd_phase_dev      { background: #2563eb; color: #fff; }
 .pd_phase_impl     { background: #059669; color: #fff; }
+.pd_phase_onhold   { background: #f59e0b; color: #fff; }
+.pd_phase_cancelled{ background: #64748b; color: #fff; }
 
 /* -- Date Filter Select   visible in both light & dark mode, no truncation -- */
 .pd_header_select {
