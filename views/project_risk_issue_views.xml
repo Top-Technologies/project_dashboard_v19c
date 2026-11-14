@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Risk & Issue Tree View -->
+    <record id="view_project_risk_issue_tree" model="ir.ui.view">
+        <field name="name">project.risk.issue.tree</field>
+        <field name="model">project.risk.issue</field>
+        <field name="arch" type="xml">
+            <list string="Risks &amp; Issues"
+                  decoration-danger="score_band == 'critical' or is_escalated"
+                  decoration-warning="score_band in ('high', 'moderate') and status != 'closed'"
+                  decoration-success="status == 'closed'">
+                <field name="name"/>
+                <field name="project_id"/>
+                <field name="type" widget="badge"/>
+                <field name="probability"/>
+                <field name="impact"/>
+                <field name="inherent_score"/>
+                <field name="residual_score"/>
+                <field name="score_band" widget="badge"
+                       decoration-danger="score_band in ('critical', 'high')"
+                       decoration-warning="score_band == 'moderate'"
+                       decoration-success="score_band == 'low'"/>
+                <field name="owner_id"/>
+                <field name="target_date"/>
+                <field name="next_review_date"/>
+                <field name="status" widget="badge"
+                       decoration-danger="status == 'open'"
+                       decoration-warning="status == 'in_progress'"
+                       decoration-info="status == 'mitigated'"
+                       decoration-success="status == 'closed'"/>
+                <field name="is_escalated" column_invisible="True"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Risk & Issue Form View -->
+    <record id="view_project_risk_issue_form" model="ir.ui.view">
+        <field name="name">project.risk.issue.form</field>
+        <field name="model">project.risk.issue</field>
+        <field name="arch" type="xml">
+            <form string="Risk and Issue">
+                <header>
+                    <field name="status" widget="statusbar" statusbar_visible="open,in_progress,mitigated,closed"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name" string="Title / Short Summary"/>
+                        <h1><field name="name" placeholder="Describe the risk event or current issue..."/></h1>
+                    </div>
+                    <group>
+                        <group string="Classification">
+                            <field name="project_id"/>
+                            <field name="task_id"/>
+                            <field name="type"/>
+                            <field name="owner_id"/>
+                        </group>
+                        <group string="Key Dates">
+                            <field name="target_date"/>
+                            <field name="next_review_date"/>
+                            <field name="submitted_date"/>
+                            <field name="closed_date" invisible="status != 'closed'"/>
+                        </group>
+                    </group>
+                    <group string="5x5 Inherent Risk Assessment">
+                        <group>
+                            <field name="probability"/>
+                            <field name="impact"/>
+                        </group>
+                        <group>
+                            <field name="inherent_score"/>
+                            <field name="score_band" widget="badge"/>
+                            <field name="is_escalated" invisible="True"/>
+                        </group>
+                    </group>
+                    <group string="Residual Assessment (Post-Mitigation)">
+                        <group>
+                            <field name="residual_probability"/>
+                            <field name="residual_impact"/>
+                        </group>
+                        <group>
+                            <field name="residual_score"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Mitigation &amp; Resolution Plan" name="mitigation">
+                            <field name="mitigation_plan" placeholder="Outline specific action steps to eliminate, mitigate, or resolve..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action for Risks and Issues -->
+    <record id="action_project_risk_issue" model="ir.actions.act_window">
+        <field name="name">Risks &amp; Issues</field>
+        <field name="res_model">project.risk.issue</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_open': 1}</field>
+    </record>
+
+</odoo>

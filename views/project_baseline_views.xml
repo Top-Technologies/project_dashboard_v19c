@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Project Baseline Tree View -->
+    <record id="view_project_baseline_tree" model="ir.ui.view">
+        <field name="name">project.baseline.tree</field>
+        <field name="model">project.baseline</field>
+        <field name="arch" type="xml">
+            <list string="Project Baselines" decoration-success="state == 'approved'" decoration-muted="state == 'superseded'">
+                <field name="name"/>
+                <field name="project_id"/>
+                <field name="baseline_date"/>
+                <field name="baseline_finish_date"/>
+                <field name="tasks_count"/>
+                <field name="approved_by_id"/>
+                <field name="approved_date"/>
+                <field name="state" widget="badge"
+                       decoration-info="state == 'draft'"
+                       decoration-success="state == 'approved'"
+                       decoration-muted="state == 'superseded'"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Project Baseline Form View -->
+    <record id="view_project_baseline_form" model="ir.ui.view">
+        <field name="name">project.baseline.form</field>
+        <field name="model">project.baseline</field>
+        <field name="arch" type="xml">
+            <form string="Project Baseline">
+                <header>
+                    <button name="action_capture_tasks" string="Capture / Refresh Tasks" type="object"
+                            class="btn-secondary" invisible="state == 'approved'"/>
+                    <button name="action_approve" string="Approve Baseline" type="object"
+                            class="btn-primary" invisible="state == 'approved'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,approved,superseded"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name" string="Baseline Title"/>
+                        <h1><field name="name" placeholder="e.g. Initial Approved Scope"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="project_id" readonly="state == 'approved'"/>
+                            <field name="baseline_date" readonly="state == 'approved'"/>
+                            <field name="baseline_finish_date"/>
+                        </group>
+                        <group>
+                            <field name="approved_by_id"/>
+                            <field name="approved_date"/>
+                            <field name="tasks_count"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Snapshot Tasks" name="snapshot_tasks">
+                            <field name="task_line_ids" readonly="state == 'approved'">
+                                <list string="Tasks" editable="bottom">
+                                    <field name="task_name_snapshot"/>
+                                    <field name="task_id"/>
+                                    <field name="planned_start_snapshot"/>
+                                    <field name="planned_end_snapshot"/>
+                                    <field name="duration_snapshot"/>
+                                    <field name="is_milestone_snapshot"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Notes &amp; Revision Log" name="notes">
+                            <field name="notes" placeholder="Explain the rationale or changes captured in this baseline revision..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action for Baselines -->
+    <record id="action_project_baseline" model="ir.actions.act_window">
+        <field name="name">Schedule Baselines</field>
+        <field name="res_model">project.baseline</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Capture an approved baseline schedule to track project finish variance and delay trends.
+            </p>
+        </field>
+    </record>
+
+    <!-- Inherit Project Form to Add Baseline Tab / Smart Button -->
+    <record id="view_project_project_form_inherit_baseline" model="ir.ui.view">
+        <field name="name">project.project.form.inherit.baseline</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.edit_project"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button class="oe_stat_button" type="action" name="%(action_project_baseline)d"
+                        context="{'default_project_id': id, 'search_default_project_id': id}"
+                        icon="fa-history">
+                    <div class="o_field_widget o_stat_info">
+                        <span class="o_stat_text">Baselines</span>
+                    </div>
+                </button>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

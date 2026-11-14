@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+
+    <record id="ir_cron_project_daily_dashboard_snapshot" model="ir.cron">
+        <field name="name">Project Dashboard: Daily Metrics Snapshot</field>
+        <field name="model_id" ref="model_project_dashboard_snapshot"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_capture_daily_snapshots()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="active" eval="True"/>
+        <field name="nextcall" eval="(DateTime.now() + timedelta(days=1)).strftime('%Y-%m-%d 01:00:00')"/>
+    </record>
+
+</odoo>
