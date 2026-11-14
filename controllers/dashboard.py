@@ -961,11 +961,16 @@ class ProjectDashboardController(http.Controller):
 
         top_projects = sorted(top_projects, key=lambda x: (x['progress'], x['total_tasks']), reverse=True)[:5]
 
-        # Resource Utilization
-
+        # Resource Utilization — strictly scoped to this project_type only
+        # Filter tasks to only those belonging to the correct project type,
+        # guarding against subtasks that may cross project type boundaries.
         user_tasks = {}
 
-        for task in all_tasks:
+        scoped_tasks = all_tasks.filtered(
+            lambda t: t.project_id and t.project_id.x_project_type == project_type
+        )
+
+        for task in scoped_tasks:
 
             for user in task.user_ids:
 
@@ -1118,10 +1123,13 @@ class ProjectDashboardController(http.Controller):
             'cancelled':   ('Cancelled',      'Cancelled',     'secondary', 'N/A',      'secondary', False, False),
         }
 
-        # SDLC Workflow & Stage Tracking: take technical projects (1 row per project)
-        sdlc_projects = Project.search([('x_project_type', '=', 'technical')])
-        if not sdlc_projects and project_type != 'technical':
-            sdlc_projects = all_projects
+        # SDLC Workflow & Stage Tracking: only shown for the technical dashboard.
+        # Use all_projects (already filtered + date-scoped to project_type='technical')
+        # so we never bleed internal projects into the SDLC table and vice-versa.
+        if project_type == 'technical':
+            sdlc_projects = all_projects  # already date-filtered technical projects
+        else:
+            sdlc_projects = Project.browse()  # empty — SDLC table hidden on internal tab
 
         sdlc_workflow = []
 
@@ -1141,12 +1149,15 @@ class ProjectDashboardController(http.Controller):
 
             phase, status_lbl, status_color, approval_lbl, approval_color, is_rework, is_planning =                 _STATUS_TO_SDLC.get(proj_status, _STATUS_TO_SDLC['new'])
 
-            # Due date: use first task deadline, else project create date
+            # Due date: project end date > latest task deadline > create date
             due = None
-            for t in p_t:
-                if t.date_deadline:
-                    due = t.date_deadline.strftime('%b %d, %Y')
-                    break
+            if hasattr(proj, 'date') and proj.date:
+                due = proj.date.strftime('%b %d, %Y')
+            if not due:
+                deadlines = [t.date_deadline for t in p_t if t.date_deadline]
+                if deadlines:
+                    due = max(deadlines).strftime('%b %d, %Y')
+
             if not due and proj.create_date:
                 due = proj.create_date.strftime('%b %d, %Y')
             due = due or 'Active'
@@ -1352,6 +1363,9 @@ class ProjectDashboardController(http.Controller):
             'overdue_tasks': overdue_tasks,
         }
 
+        overall_completed_tasks = all_tasks.filtered(is_task_done)
+        overall_remaining_tasks = all_tasks - overall_completed_tasks
+
         windows = comparison_windows(date_filter, today_date)
         add_metric_trend(kpis, 'total_projects', trend_projects, lambda p: True, lambda p: p.create_date, windows, label='Projects created')
         add_metric_trend(kpis, 'active_projects', trend_projects, lambda p: p.x_project_status == 'in_progress', lambda p: p.write_date, windows, label='Active projects updated')
@@ -1369,7 +1383,19 @@ class ProjectDashboardController(http.Controller):
             'projects_by_status': projects_by_status,
 
             'tasks_by_stage': tasks_by_stage,
-            'sdlc_phases_total_tasks': sum(stage_data.get(stage, 0) for stage in SDLC_PHASE_LABELS),
+
+            'sdlc_phases_total_tasks': sum(stage_data.get(stage, 0) for stage in stage_order),
+
+            # Technical dashboard totals include every task and subtask across
+            # all technical projects, without filtering by assigned employee.
+            'overall_plan': {
+                'total_tasks': len(all_tasks),
+                'done_tasks': len(overall_completed_tasks),
+                'remaining_tasks': len(overall_remaining_tasks),
+                'all_task_ids': all_tasks.ids,
+                'done_task_ids': overall_completed_tasks.ids,
+                'remaining_task_ids': overall_remaining_tasks.ids,
+            },
 
             'project_progress': [],
 

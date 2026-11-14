@@ -790,19 +790,19 @@
                         </div>
                     </div>
 
-                    <!-- ── Middle Row 1: Projects by Status & SDLC Phases / Tasks by Stage (Bar chart removed!) ── -->
+                    <!-- ── Middle Row 1: Planned vs Completed & SDLC phases ── -->
                     <div class="pd_internal_charts_row">
-                        <!-- Projects by Status (Donut) -->
-                        <div class="pd_chart_card_v2">
+                        <!-- Overall Planned vs Completed (all technical project employees) -->
+                        <div class="pd_chart_card_v2 pd_overall_plan_card">
                             <div class="pd_chart_header_v2">
-                                <div class="pd_card_title_v2"><i class="fa fa-pie-chart text-primary me-2"/>Projects by Status</div>
-                                <span class="pd_view_link" t-on-click="onKpiTotalProjectsClick">View Details <i class="fa fa-arrow-right ms-1"/></span>
+                                <div class="pd_card_title_v2"><i class="fa fa-calendar-check-o text-success me-2"/>Overall Planned vs Completed</div>
+                                <span class="pd_view_link" t-on-click="openTechnicalPlannedTasks" title="Click to view all planned technical tasks" style="cursor: pointer;">View Planned (<t t-esc="state.data.overall_plan.total_tasks || 0"/>) <i class="fa fa-arrow-right ms-1"/></span>
                             </div>
-                            <div class="pd_donut_wrapper">
-                                <canvas t-ref="chartProjectStatus" class="pd_canvas"/>
-                                <div class="pd_donut_center_text">
-                                    <div class="pd_donut_center_value"><t t-esc="state.data.kpis.total_projects"/></div>
-                                    <div class="pd_donut_center_label">Total</div>
+                            <div class="pd_donut_wrapper pd_overall_donut_wrapper">
+                                <canvas t-ref="chartOverallPlanMain" class="pd_canvas"/>
+                                <div class="pd_donut_center_text pd_row_clickable" t-on-click="openTechnicalCompletedTasks" title="Click to view completed technical tasks" style="cursor: pointer;">
+                                    <div class="pd_donut_center_value"><t t-esc="state.data.overall_plan.done_tasks || 0"/> / <t t-esc="state.data.overall_plan.total_tasks || 0"/></div>
+                                    <div class="pd_donut_center_label">Completed</div>
                                 </div>
                             </div>
                         </div>

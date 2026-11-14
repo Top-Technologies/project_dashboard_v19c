@@ -33,20 +33,40 @@ function loadChartJs() {
 
 export class ProjectDashboard extends Component {
     static template = "project_dashboard_v19c.ProjectDashboard";
+    static displayName = "Dashboard";
 
     setup() {
         this.action = useService("action");
+        let initialType = this.props.action?.params?.projectType || 
+                          this.props.action?.context?.default_project_type;
+        if (!initialType) {
+            try {
+                initialType = sessionStorage.getItem("pd_last_project_type") || 
+                              localStorage.getItem("pd_last_project_type");
+            } catch (e) {}
+        }
+        if (!initialType || !["client", "internal", "technical"].includes(initialType)) {
+            initialType = "client";
+        }
         this.state = useState({
             loading: true,
             data: null,
             error: null,
-            projectType: "client",
+            projectType: initialType,
             dateFilter: "month",
             expandedTasks: {},
         });
+        try {
+            sessionStorage.setItem("pd_last_project_type", initialType);
+            localStorage.setItem("pd_last_project_type", initialType);
+        } catch (e) {}
+        if (this.props.action) {
+            this.props.action.params = { ...this.props.action.params, projectType: initialType };
+        }
         this.chartProjectStatusRef = useRef("chartProjectStatus");
         this.chartTaskStageRef = useRef("chartTaskStage");
         this.chartProgressRef = useRef("chartProgress");
+        this.chartOverallPlanMainRef = useRef("chartOverallPlanMain");
         this._charts = {};
         onMounted(() => this.loadData());
         onWillUnmount(() => this._destroyCharts());
@@ -60,17 +80,28 @@ export class ProjectDashboard extends Component {
     }
 
     openProjects(domain, name) {
+        try {
+            sessionStorage.setItem("pd_last_project_type", this.state.projectType);
+            localStorage.setItem("pd_last_project_type", this.state.projectType);
+        } catch (e) {}
         this.action.doAction({
             type: "ir.actions.act_window",
             name: name,
             res_model: "project.project",
             views: [[false, "list"], [false, "form"]],
             domain: domain,
+            context: {
+                default_project_type: this.state.projectType,
+            },
             target: "current",
         });
     }
 
     openTasks(domain, name, context = {}) {
+        try {
+            sessionStorage.setItem("pd_last_project_type", this.state.projectType);
+            localStorage.setItem("pd_last_project_type", this.state.projectType);
+        } catch (e) {}
         this.action.doAction({
             type: "ir.actions.act_window",
             name: name,
@@ -80,6 +111,7 @@ export class ProjectDashboard extends Component {
             context: {
                 search_default_my_tasks: 0,
                 search_default_open_tasks: 0,
+                default_project_type: this.state.projectType,
                 ...context,
             },
             target: "current",
@@ -88,6 +120,11 @@ export class ProjectDashboard extends Component {
 
     openProjectForm(projectId) {
         if (!projectId) return;
+
+        try {
+            sessionStorage.setItem("pd_last_project_type", this.state.projectType);
+            localStorage.setItem("pd_last_project_type", this.state.projectType);
+        } catch (e) {}
         this.action.doAction({
             type: "ir.actions.act_window",
             res_model: "project.project",
@@ -99,6 +136,11 @@ export class ProjectDashboard extends Component {
 
     openTaskForm(taskId) {
         if (!taskId) return;
+        try {
+            sessionStorage.setItem("pd_last_project_type", this.state.projectType);
+            localStorage.setItem("pd_last_project_type", this.state.projectType);
+        } catch (e) {}
+
         this.action.doAction({
             type: "ir.actions.act_window",
             res_model: "project.task",
@@ -143,6 +185,15 @@ export class ProjectDashboard extends Component {
     setProjectType(type) {
         if (this.state.projectType !== type) {
             this.state.projectType = type;
+
+            try {
+                sessionStorage.setItem("pd_last_project_type", type);
+                localStorage.setItem("pd_last_project_type", type);
+            } catch (e) {}
+            if (this.props.action) {
+                this.props.action.params = { ...this.props.action.params, projectType: type };
+            }
+
             this.loadData();
         }
     }
@@ -176,6 +227,21 @@ export class ProjectDashboard extends Component {
         this.openTasks(["|", ["project_id.x_project_type", "=", this.state.projectType], ["parent_id.project_id.x_project_type", "=", this.state.projectType]], "All Tasks");
     }
 
+    openTechnicalPlannedTasks() {
+        const ids = this.state.data?.overall_plan?.all_task_ids || [];
+        this.openTasks([["id", "in", ids]], "All Planned Technical Tasks");
+    }
+
+    openTechnicalCompletedTasks() {
+        const ids = this.state.data?.overall_plan?.done_task_ids || [];
+        this.openTasks([["id", "in", ids]], "Completed Technical Tasks");
+    }
+
+    openTechnicalRemainingTasks() {
+        const ids = this.state.data?.overall_plan?.remaining_task_ids || [];
+        this.openTasks([["id", "in", ids]], "Remaining Technical Tasks");
+    }
+
     onKpiSubtasksClick() {
         const subtaskIds = this.state.data?.subtask_ids;
         if (this.state.projectType !== "client" && Array.isArray(subtaskIds) && subtaskIds.length > 0) {
@@ -194,6 +260,10 @@ export class ProjectDashboard extends Component {
     }
 
     onTopProjectClick(projectId) {
+        try {
+            sessionStorage.setItem("pd_last_project_type", this.state.projectType);
+            localStorage.setItem("pd_last_project_type", this.state.projectType);
+        } catch (e) {}
         this.action.doAction({
             type: "ir.actions.client",
             tag: "project_detail_dashboard_v19c",
@@ -203,6 +273,10 @@ export class ProjectDashboard extends Component {
     }
 
     onDetailedDashboardClick() {
+        try {
+            sessionStorage.setItem("pd_last_project_type", this.state.projectType);
+            localStorage.setItem("pd_last_project_type", this.state.projectType);
+        } catch (e) {}
         this.action.doAction({
             type: "ir.actions.client",
             tag: "project_detail_dashboard_v19c",
@@ -290,10 +364,12 @@ export class ProjectDashboard extends Component {
         }
         this._destroyCharts();
 
-        if (this.state.projectType === 'internal' || this.state.projectType === 'technical') {
+        if (this.state.projectType === 'technical') {
+            this._renderInternalTaskStageChart();
+            this._renderTechnicalOverallPlanChart();
+        } else if (this.state.projectType === 'internal') {
             this._renderInternalProjectStatusChart();
             this._renderInternalTaskStageChart();
-            // Bar chart removed for internal projects as requested
         } else {
             this._renderClientProjectStatusChart();
             this._renderClientTaskStageChart();
@@ -412,6 +488,53 @@ export class ProjectDashboard extends Component {
         });
     }
 
+    _renderTechnicalOverallPlanChart() {
+        const el = this.chartOverallPlanMainRef.el;
+        if (!el || !window.Chart) return;
+        const plan = this.state.data.overall_plan || {};
+        const completed = plan.done_tasks || 0;
+        const remaining = plan.remaining_tasks || 0;
+        this._charts.overallPlan = new window.Chart(el, {
+            type: "doughnut",
+            data: {
+                labels: ["Completed", "Remaining"],
+                datasets: [{
+                    data: [completed, remaining],
+                    backgroundColor: ["#22c55e", "#cbd5e1"],
+                    hoverBackgroundColor: ["#16a34a", "#94a3b8"],
+                    borderColor: "#ffffff",
+                    borderWidth: 3,
+                }],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: "68%",
+                onHover: (_event, elements, chart) => {
+                    chart.canvas.style.cursor = elements.length ? "pointer" : "default";
+                },
+                onClick: (_event, elements, chart) => {
+                    const index = elements.length ? elements[0].index : chart?.legend?.lastActive?.index;
+                    if (index === 0) this.openTechnicalCompletedTasks();
+                    else if (index === 1) this.openTechnicalRemainingTasks();
+                },
+                plugins: {
+                    legend: {
+                        position: "right",
+                        labels: { usePointStyle: true, boxWidth: 10, padding: 14, font: { size: 12, weight: "500" } },
+                        onClick: (_event, item) => {
+                            if (item.index === 0) this.openTechnicalCompletedTasks();
+                            else this.openTechnicalRemainingTasks();
+                        },
+                    },
+                    tooltip: {
+                        callbacks: { label: (context) => ` ${context.label}: ${context.raw} (click to view)` },
+                    },
+                },
+            },
+        });
+    }
+
     _renderClientProjectStatusChart() {
         const el = this.chartProjectStatusRef.el;
         if (!el || !window.Chart) return;
@@ -517,20 +640,39 @@ registry.category("actions").add("project_dashboard_v19c", ProjectDashboard);
 
 export class ProjectDetailDashboard extends Component {
     static template = "project_dashboard_v19c.ProjectDetailDashboard";
+    static displayName = "Project Dashboard";
 
     setup() {
         this.action = useService("action");
+        let initialType = this.props.action?.params?.projectType || 
+                          this.props.action?.context?.default_project_type;
+        if (!initialType) {
+            try {
+                initialType = sessionStorage.getItem("pd_last_project_type") || 
+                              localStorage.getItem("pd_last_project_type");
+            } catch (e) {}
+        }
+        if (!initialType || !["client", "internal", "technical"].includes(initialType)) {
+            initialType = "client";
+        }
         this.state = useState({
             loading: true,
             data: null,
             error: null,
             projectsList: [],
             selectedProjectId: this.props.action.params?.project_id || this.props.action.context?.project_id || null,
-            projectType: this.props.action.params?.projectType || 'client',
+            projectType: initialType,
             dateFilter: "month",
             expandedTasks: {},
             showAllPhases: false,
         });
+        try {
+            sessionStorage.setItem("pd_last_project_type", initialType);
+            localStorage.setItem("pd_last_project_type", initialType);
+        } catch (e) {}
+        if (this.props.action) {
+            this.props.action.params = { ...this.props.action.params, projectType: initialType };
+        }
         this.chartTasksStatusRef = useRef("chartTasksStatus");
         this.chartTasksConsultantRef = useRef("chartTasksConsultant");
         this.chartWorkloadRef = useRef("chartWorkload");
@@ -808,6 +950,13 @@ export class ProjectDetailDashboard extends Component {
     async setProjectType(type) {
         if (this.state.projectType !== type) {
             this.state.projectType = type;
+          try {
+                sessionStorage.setItem("pd_last_project_type", type);
+                localStorage.setItem("pd_last_project_type", type);
+            } catch (e) {}
+            if (this.props.action) {
+                this.props.action.params = { ...this.props.action.params, projectType: type };
+            }
             this.state.selectedProjectId = null;
             this.state.data = null;
             await this.loadProjectsList();
@@ -857,6 +1006,10 @@ export class ProjectDetailDashboard extends Component {
     }
 
     openTask(taskId) {
+        try {
+            sessionStorage.setItem("pd_last_project_type", this.state.projectType);
+            localStorage.setItem("pd_last_project_type", this.state.projectType);
+        } catch (e) {}
         this.action.doAction({
             type: "ir.actions.act_window",
             res_model: "project.task",
@@ -911,9 +1064,15 @@ export class ProjectDetailDashboard extends Component {
     }
 
     onBackClick() {
+        try {
+            sessionStorage.setItem("pd_last_project_type", this.state.projectType);
+            localStorage.setItem("pd_last_project_type", this.state.projectType);
+        } catch (e) {}
         this.action.doAction({
             type: "ir.actions.client",
             tag: "project_dashboard_v19c",
+            name: "Dashboard",
+            params: { projectType: this.state.projectType },
         }, { clearBreadcrumbs: true });
     }
 
